@@ -32,8 +32,10 @@ class opcode_package_t {
         bool is_predicated;
         bool is_prefetch;
 
+        bool end;
         // ====================================================================
         /// Methods
         // ====================================================================
         opcode_package_t();
+        
 };
