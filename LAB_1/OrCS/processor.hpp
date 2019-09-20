@@ -21,4 +21,5 @@ class BTB_t {
 	public:
 		uint64_t pc;
 		uint64_t time;
+		char BHT;
 };
