@@ -15,11 +15,18 @@ class processor_t {
 	    void statistics();
 };
 
+class block{
+	public:
+
+		uint64_t 	pc;
+		uint64_t 	time;
+		char		validade;
+};
+
 class BTB_t {
 	private:
 
 	public:
-		uint64_t pc;
-		uint64_t time;
-		char BHT;
+		block 	group[4];
+		char 	BHT;
 };
