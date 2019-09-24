@@ -100,7 +100,7 @@ void processor_t::allocate() {
 void processor_t::clock() {
 
 	uint64_t  entry, older;
-	ushort selected;
+	ushort selected, i;
 	opcode_package_t *aux;
 	bool taken;
 	
@@ -136,72 +136,44 @@ void processor_t::clock() {
 			// Counting number of branches.
 			contador_branch ++;
 			entry = (new_instruction->opcode_address & 1023);
-			
-			if(btb[entry].group[0].pc == new_instruction->opcode_address){
-				btb[entry].group[0].pc = new_instruction->opcode_address;
-				btb[entry].group[0].time = orcs_engine.global_cycle;
-				taken = prediction(btb[entry].group[0].BHT);
-				delay = verification(new_instruction, next_instruction, &btb[entry].group[0], taken);
+			older = 0xFFFFFFFFFFFFFFFF;
+
+			//Trying to find the branch instruction inside the BTB.
+			for(i = 0; i < 4; i++){
+				if(btb[entry].group[i].pc == new_instruction->opcode_address){
+					btb[entry].group[i].pc = new_instruction->opcode_address;
+					btb[entry].group[i].time = orcs_engine.global_cycle;
+					if(new_instruction->branch_type == BRANCH_COND){
+						taken = prediction(btb[entry].group[i].BHT);
+						verification(new_instruction, next_instruction, &btb[entry].group[i], taken);
+					}
+					break;
+				}
+				if(older > btb[entry].group[i].time){
+					older = btb[entry].group[i].time;
+					selected = i;
+				}
 			}
-			else{
-				older = btb[entry].group[0].time;
-				selected = 0;
-				if(btb[entry].group[1].pc == new_instruction->opcode_address){
-					btb[entry].group[1].pc = new_instruction->opcode_address;
-					btb[entry].group[1].time = orcs_engine.global_cycle;
-					taken = prediction(btb[entry].group[1].BHT);
-					delay = verification(new_instruction, next_instruction, &btb[entry].group[1], taken);
-					
+
+			// If the branch instruction was not found into BTB.
+			if(i == 4){
+				contador_miss_BTB++;
+
+				btb[entry].group[selected].pc = new_instruction->opcode_address;
+				btb[entry].group[selected].time = orcs_engine.global_cycle;
+				if(new_instruction->branch_type == BRANCH_COND){
+					taken = prediction(btb[entry].group[selected].BHT);
+					verification(new_instruction, next_instruction, &btb[entry].group[selected], taken);
 				}
-				else{
-					if(older > btb[entry].group[1].time){
-						older = btb[entry].group[1].time;
-						selected = 1;
-					}
-					if(btb[entry].group[2].pc == new_instruction->opcode_address){
-						btb[entry].group[2].pc = new_instruction->opcode_address;
-						btb[entry].group[2].time = orcs_engine.global_cycle;
-						taken = prediction(btb[entry].group[1].BHT);
-						delay = verification(new_instruction, next_instruction, &btb[entry].group[2], taken);
-						
-					}	
-					else{
-						if(older > btb[entry].group[2].time){
-							older = btb[entry].group[2].time;
-							selected = 2;
-						}
-						if(btb[entry].group[3].pc == new_instruction->opcode_address){
-							btb[entry].group[3].pc = new_instruction->opcode_address;
-							btb[entry].group[3].time = orcs_engine.global_cycle;
-							taken = prediction(btb[entry].group[3].BHT);
-							delay = verification(new_instruction, next_instruction, &btb[entry].group[3], taken);
-							
-						}	
-						else{							
-							if(older > btb[entry].group[3].time){
-								older = btb[entry].group[3].time;
-								selected = 3;
-							}
 
-							// Counting number of misses in BTB.
-							contador_miss_BTB++;
+				delay = 14;
 
-							btb[entry].group[selected].pc = new_instruction->opcode_address;
-							btb[entry].group[selected].time = orcs_engine.global_cycle;
-							taken = prediction(btb[entry].group[selected].BHT);
-							verification(new_instruction, next_instruction, &btb[entry].group[selected], taken);
-
-							delay = 14;
-
-							// ORCS_PRINTF("GRUPO:\t%" PRIu64 "\n", entry);
-							// ORCS_PRINTF("%" PRIu64 " \t %" PRIu64 "\n", btb[entry].group[0].pc, btb[entry].group[0].time);
-							// ORCS_PRINTF("%" PRIu64 " \t %" PRIu64 "\n", btb[entry].group[1].pc, btb[entry].group[1].time);
-							// ORCS_PRINTF("%" PRIu64 " \t %" PRIu64 "\n", btb[entry].group[2].pc, btb[entry].group[2].time);
-							// ORCS_PRINTF("%" PRIu64 " \t %" PRIu64 "\n", btb[entry].group[3].pc, btb[entry].group[3].time);
-							// ORCS_PRINTF("\n\n\n");
-						}
-					}
-				}
+				// ORCS_PRINTF("GRUPO:\t%" PRIu64 "\n", entry);
+				// ORCS_PRINTF("%" PRIu64 " \t %" PRIu64 "\n", btb[entry].group[0].pc, btb[entry].group[0].time);
+				// ORCS_PRINTF("%" PRIu64 " \t %" PRIu64 "\n", btb[entry].group[1].pc, btb[entry].group[1].time);
+				// ORCS_PRINTF("%" PRIu64 " \t %" PRIu64 "\n", btb[entry].group[2].pc, btb[entry].group[2].time);
+				// ORCS_PRINTF("%" PRIu64 " \t %" PRIu64 "\n", btb[entry].group[3].pc, btb[entry].group[3].time);
+				// ORCS_PRINTF("\n\n\n");
 			}	
 		}
 	}
