@@ -1,6 +1,6 @@
 #include "simulator.hpp"
 
-int64_t contador_branch, contador_miss_BTB, contador_miss_BTH;
+int64_t contador_branch, contador_miss_BTB, contador_miss_BTH, contador_prediction;
 
 BTB_t *btb;
 char  delay;
@@ -40,6 +40,7 @@ int verification(opcode_package_t* actual, opcode_package_t* next, block* bk, us
 	
 	// ORCS_PRINTF("NT_address = %" PRIu64 " \t next_address = %" PRIu64 "\n", NT_address, next->opcode_address);
 
+	contador_prediction++;
 	// IF BRANCH = T
 	if(NT_address != next->opcode_address){
 		//IF BTH = T
@@ -92,6 +93,7 @@ void processor_t::allocate() {
 	next_instruction = (opcode_package_t *) malloc(sizeof(opcode_package_t));
 
 	contador_branch = 0;
+	contador_prediction = 0;
 	contador_miss_BTB = 0;
 	contador_miss_BTH = 0;
 };
@@ -131,8 +133,6 @@ void processor_t::clock() {
 	else{
 		if(new_instruction->opcode_operation == INSTRUCTION_OPERATION_BRANCH){
 
-			ORCS_PRINTF("%" PRIu64 "\n", new_instruction->opcode_address);
-
 			// Counting number of branches.
 			contador_branch ++;
 			entry = (new_instruction->opcode_address & 1023);
@@ -162,8 +162,8 @@ void processor_t::clock() {
 				btb[entry].group[selected].pc = new_instruction->opcode_address;
 				btb[entry].group[selected].time = orcs_engine.global_cycle;
 				if(new_instruction->branch_type == BRANCH_COND){
-					taken = prediction(btb[entry].group[selected].BHT);
-					verification(new_instruction, next_instruction, &btb[entry].group[selected], taken);
+					// taken = prediction(btb[entry].group[selected].BHT);
+					// verification(new_instruction, next_instruction, &btb[entry].group[selected], taken);
 				}
 
 				delay = 14;
@@ -181,9 +181,10 @@ void processor_t::clock() {
 
 // =====================================================================
 void processor_t::statistics() {
-	ORCS_PRINTF("######################################################\n");
 	ORCS_PRINTF("processor_t\n");
 	ORCS_PRINTF("Total Branches:%" PRIu64 "\n", contador_branch);
 	ORCS_PRINTF("Total BTB misses:%" PRIu64 "\n", contador_miss_BTB);
+	ORCS_PRINTF("Total predictions:%" PRIu64 "\n", contador_prediction);
 	ORCS_PRINTF("Total BHT misses:%" PRIu64 "\n", contador_miss_BTH);
+	ORCS_PRINTF("branch conditinal HIT: %f\n", 1 - ((contador_miss_BTH * 1.0)/(contador_prediction * 1.0)));
 };
