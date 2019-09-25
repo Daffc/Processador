@@ -1,0 +1,14 @@
+End of dynamic simulation trace
+End of dynamic simulation trace
+CLOCKS = 260654668
+End of Simulation
+######################################################
+trace_reader_t
+fetch_instructions:200001502
+######################################################
+processor_t
+Total Branches:36628465
+Total BTB misses:1077
+Total predictions:29083430
+Total BHT misses:4331292
+branch conditinal HIT: 0.851074
