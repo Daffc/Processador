@@ -1,0 +1,7 @@
+ERROR INFORMATION
+ERROR: File: trace_reader.cpp at Line: 413
+ERROR: Function: bool trace_reader_t::trace_fetch(opcode_package_t*)
+ERROR: Cycle: 155810276
+ERROR_ASSERT: mem_is_read == true
+
+ERROR: Expecting a read from memory trace
