@@ -145,7 +145,7 @@ void processor_t::clock() {
 					btb[entry].group[i].time = orcs_engine.global_cycle;
 					if(new_instruction->branch_type == BRANCH_COND){
 						taken = prediction(btb[entry].group[i].BHT);
-						verification(new_instruction, next_instruction, &btb[entry].group[i], taken);
+						delay = verification(new_instruction, next_instruction, &btb[entry].group[i], taken);
 					}
 					break;
 				}
