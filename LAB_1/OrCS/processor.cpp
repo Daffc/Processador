@@ -185,6 +185,6 @@ void processor_t::statistics() {
 	ORCS_PRINTF("Total Branches:%" PRIu64 "\n", contador_branch);
 	ORCS_PRINTF("Total BTB misses:%" PRIu64 "\n", contador_miss_BTB);
 	ORCS_PRINTF("Total predictions:%" PRIu64 "\n", contador_prediction);
-	ORCS_PRINTF("Total BHT misses:%" PRIu64 "\n", contador_miss_BTH);
+	ORCS_PRINTF("Total mispredictions:%" PRIu64 "\n", contador_miss_BTH);
 	ORCS_PRINTF("branch conditinal HIT: %f\n", 1 - ((contador_miss_BTH * 1.0)/(contador_prediction * 1.0)));
 };

@@ -9,5 +9,5 @@ processor_t
 Total Branches:36628465
 Total BTB misses:1077
 Total predictions:29083430
-Total BHT misses:1615116
+Total mispredictions:1615116
 branch conditinal HIT: 0.944466
