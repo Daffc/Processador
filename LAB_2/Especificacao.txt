@@ -1,0 +1,37 @@
+Cache Design
+
+Block size : 	64B
+
+Cache L1
+	Tamanho: 	64KB
+	Blocos:  	1024
+	Sets:		4
+	Entradas:	256	
+	Latência: 	1
+	Substituição: 	LRU
+	Write-back c/ Write Allocate
+	Non-Inclusive
+	
+	Endereçamento:
+		0-5	Offset
+		6-13	Index
+		14-32	Tag
+
+Cache L2
+	Tamanho:	1Mb
+	Blocos:		16384
+	Entradas:	2048
+	Latência: 	4
+	Substituição: 	LRU
+	Write-back c/ Write Allocate
+	Non-Inclusive
+	
+	Endereçamento:
+		0-5	Offset
+		6-16	Index
+		17-32	Tag
+
+Memória Principal
+
+	Tamanho: 	4GB
+	Latência: 	200 ciclos.
