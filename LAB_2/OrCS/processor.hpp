@@ -59,6 +59,12 @@ class processor_t {
 		cache	*L1;
 		cache	*L2;
 
+		uint32_t miss_L1;
+		uint32_t miss_L2;
+
+		uint32_t total_acesso_L1;
+		uint32_t total_acesso_L2;
+		
 		// ====================================================================
 		/// Methods
 		// ====================================================================

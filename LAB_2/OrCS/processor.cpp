@@ -14,6 +14,12 @@ processor_t::processor_t() {
 	L1->initialize("L1", 63, 255, 4, 1024, 1);
 	L2->initialize("L2", 63, 1023, 8, 16384, 4);
 
+	// Inicializando contadores.
+	miss_L1 = 0;
+	miss_L2 = 0;
+	total_acesso_L1 = 0;
+	total_acesso_L2 = 0;
+
 };
 
 // =====================================================================
@@ -26,33 +32,31 @@ void processor_t::clock() {
 	/// Get the next instruction from the trace
 	opcode_package_t new_instruction;
 
-	// if(delay){
-	// 	delay--;
-	// 	return;	
-	// }
+	if(delay){
+		delay--;
+		return;	
+	}
 	
-	if (!orcs_engine.trace_reader->trace_fetch(&new_instruction) || orcs_engine.global_cycle > 200) {
+	// if (!orcs_engine.trace_reader->trace_fetch(&new_instruction) || orcs_engine.global_cycle > 200) {
+	if (!orcs_engine.trace_reader->trace_fetch(&new_instruction)) {
 		/// If EOF
 		ORCS_PRINTF("CLOCKS = %" PRIu64 "\n",orcs_engine.global_cycle);
 		orcs_engine.simulator_alive = false;
 
-		L1->free_cache();
-		L2->free_cache();
+		// L1->free_cache();
+		// L2->free_cache();
 
-		free(L1);
-		free(L2);
+		// free(L1);
+		// free(L2);
 	}
 	else{
 		if(new_instruction.is_read){
-			ORCS_PRINTF("READ 1\n");
 			delay += read(new_instruction.read_address);
 		}
 		if(new_instruction.is_read2){
-			ORCS_PRINTF("READ 2\n");
 			delay += read(new_instruction.read2_address);
 		}
 		if(new_instruction.is_write){
-			ORCS_PRINTF("WRITE\n");
 			ORCS_PRINTF("ENDEREÇO: %" PRIu64 "\n", new_instruction.write_address);			
 			delay += read(new_instruction.write_address);
 			write(new_instruction.write_address);
@@ -62,6 +66,11 @@ void processor_t::clock() {
 
 // =====================================================================
 void processor_t::statistics() {
+
+	ORCS_PRINTF("total_acesso_L1:\t%" PRIu32 "\n", total_acesso_L1);
+	ORCS_PRINTF("miss_L1:        \t%" PRIu32 "\n", miss_L1);
+	ORCS_PRINTF("total_acesso_L2:\t%" PRIu32 "\n", total_acesso_L2);
+	ORCS_PRINTF("miss_L2:        \t%" PRIu32 "\n", miss_L2);
 	ORCS_PRINTF("######################################################\n");
 	ORCS_PRINTF("processor_t\n");
 
@@ -146,27 +155,32 @@ int processor_t::read(uint32_t endereco){
 		uint32_t posicao_1, posicao_2;
 		int delay;
 
-		ORCS_PRINTF("Buscando:\t%" PRIu32 "\n\n", endereco);
-		L1->imprimeGrupo(endereco);
-		L2->imprimeGrupo(endereco);
+		// ORCS_PRINTF("Buscando:\t%" PRIu32 "\n\n", endereco);
+		// L1->imprimeGrupo(endereco);
+		// L2->imprimeGrupo(endereco);
 
+		total_acesso_L1 += 1;
 		delay = L1->latencia;
 
 		// Verifica se bloco está em cache e o atualiza, caso não esteja entra no if.
-
 		if(!L1->search(endereco, &posicao_1)){
+			
+			miss_L1 +=1;
+
+			total_acesso_L2 += 1;
 			delay += L2->latencia;
 
 			// Verifica se bloco está em cache e o atualiza, caso não esteja entra no if.
 			if(!L2->search(endereco, &posicao_2)){
 				delay += DELAY_PRINC_MEM;
 
+				miss_L2 += 1;
 				delay += L2->allocate(endereco, posicao_2);
 			}
 			delay += L1->allocate(endereco, posicao_1);
 		}
-		ORCS_PRINTF("DELAY:\t%d\n\n", delay);
-		ORCS_PRINTF("--------------------------------------\n\n");	 
+		// ORCS_PRINTF("DELAY:\t%d\n\n", delay);
+		// ORCS_PRINTF("--------------------------------------\n\n");	 
 		
 		return delay;
 
