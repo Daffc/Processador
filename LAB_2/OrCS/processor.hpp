@@ -66,5 +66,12 @@ class processor_t {
 	    void allocate();
 	    void clock();
 	    void statistics();
+		
+
+		// Efetuará todo os processos relacionados a leitura do "endereço", retornando o delay gerado prlo processo.
+		int read(uint32_t endereco);
+
+		// Efetuará todo os processos relacionados a escrita do "endereço" uma vez que este já esteja na L1 (após read).
+		void write(uint32_t endereco);
 };
 
