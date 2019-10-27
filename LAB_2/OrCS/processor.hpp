@@ -1,9 +1,15 @@
+
+#define BLOCK_BIT_SIZE 6
+#define DELAY_PRINC_MEM 200
+
 class block {
 	private:
 
 	public:
-		uint32_t pc;
+		uint32_t endereco;
 		uint64_t time;
+		char	validade;
+		char	dirty;
 };
 
 class cache{
@@ -11,6 +17,7 @@ class cache{
 
 
 	public:
+		char     nome[5] ;
 		block 	 *blocos;
 		uint32_t offset_operator;
 		uint32_t index_operator;
@@ -18,12 +25,26 @@ class cache{
 		uint32_t tamanho;
 		unsigned char latencia;
 
-		// Procurar por bloco de informado na cache.
-		int search(uint32_t address);
 		// Criar e instanciar cache.
-		void initialize(uint32_t offset, uint32_t index, uint32_t vias, uint32_t tamanho, unsigned char delay);
+		void initialize(const char* nome, uint32_t offset, uint32_t index, uint32_t vias, uint32_t tamanho, unsigned char delay);
+		
+		// Procurar por bloco de informado na cache, caso ache returna 1, 
+		// caso não ache, retorna 0 e melhor posição em *melhor_posicao
+		int search(uint32_t endereco, uint32_t *melhor_posicao);
+		
+		// Aloca bloco de "endereço" solicitado no espaço indicado por "posicao" em cache e retorna delay 
+		// provocado pela operação (substituição de dirty block).
+		int allocate(uint32_t endereco, uint32_t posicao);
+
 		//Limpar memória usada por cache.
 		void free_cache();
+
+		/*-------------------------------------------------*/
+		/*--------------------- DEBUG ---------------------*/
+		/*-------------------------------------------------*/
+
+		// Imprime grupo de cache de acordo com o index provido pelo endereco.
+		void imprimeGrupo(uint32_t endereco);
 
 };
 

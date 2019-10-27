@@ -1,0 +1,4 @@
+Bit de validade necessário a cache para caso em quem valor é 
+removido da L1 (com dirty ativo) mas ainda consta na L2 (será invalidado).
+
+REmover primeiramente valores invalidados.

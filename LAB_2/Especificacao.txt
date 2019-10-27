@@ -13,7 +13,7 @@ Cache L1
 	Non-Inclusive
 	
 	Endereçamento:
-		0-5	Offset
+		0-5		Offset
 		6-13	Index
 		14-32	Tag
 
