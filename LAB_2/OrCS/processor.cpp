@@ -58,11 +58,12 @@ void processor_t::clock() {
 			// ORCS_PRINTF("READ2\n");		
 			delay += read(new_instruction.read2_address);
 		}
-		// if(new_instruction.is_write){
-		// 	ORCS_PRINTF("WRITE\n");			
-		// 	delay += read(new_instruction.write_address);
-		// 	write(new_instruction.write_address);
-		// }
+		if(new_instruction.is_write){
+			// ORCS_PRINTF("WRITE\n");			
+			delay += read(new_instruction.write_address);
+			delay += read(5);
+			write(new_instruction.write_address);
+		}
 	}
 };
 
