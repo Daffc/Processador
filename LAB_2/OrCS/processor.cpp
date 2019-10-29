@@ -19,7 +19,7 @@ processor_t::processor_t() {
 	miss_L2 = 0;
 	total_acesso_L1 = 0;
 	total_acesso_L2 = 0;
-
+	total_writeback = 0;
 };
 
 // =====================================================================
@@ -37,8 +37,8 @@ void processor_t::clock() {
 		return;	
 	}
 	
-	// if (!orcs_engine.trace_reader->trace_fetch(&new_instruction) || orcs_engine.global_cycle > 200) {
-	if (!orcs_engine.trace_reader->trace_fetch(&new_instruction)) {
+	if (!orcs_engine.trace_reader->trace_fetch(&new_instruction) || orcs_engine.global_cycle > 20000) {
+	// if (!orcs_engine.trace_reader->trace_fetch(&new_instruction)) {
 		/// If EOF
 		ORCS_PRINTF("CLOCKS = %" PRIu64 "\n",orcs_engine.global_cycle);
 		orcs_engine.simulator_alive = false;
@@ -51,13 +51,15 @@ void processor_t::clock() {
 	}
 	else{
 		if(new_instruction.is_read){
+			ORCS_PRINTF("READ\n");		
 			delay += read(new_instruction.read_address);
 		}
 		if(new_instruction.is_read2){
+			ORCS_PRINTF("READ2\n");		
 			delay += read(new_instruction.read2_address);
 		}
 		if(new_instruction.is_write){
-			ORCS_PRINTF("ENDEREÇO: %" PRIu64 "\n", new_instruction.write_address);			
+			ORCS_PRINTF("WRITE\n");			
 			delay += read(new_instruction.write_address);
 			write(new_instruction.write_address);
 		}
@@ -71,6 +73,7 @@ void processor_t::statistics() {
 	ORCS_PRINTF("miss_L1:        \t%" PRIu32 "\n", miss_L1);
 	ORCS_PRINTF("total_acesso_L2:\t%" PRIu32 "\n", total_acesso_L2);
 	ORCS_PRINTF("miss_L2:        \t%" PRIu32 "\n", miss_L2);
+	ORCS_PRINTF("total_writeback:\t%" PRIu32 "\n", total_writeback);
 	ORCS_PRINTF("######################################################\n");
 	ORCS_PRINTF("processor_t\n");
 
@@ -124,7 +127,7 @@ int cache::search(uint32_t endereco, uint32_t* melhor_posicao){
 	return 0;
 }
 
-int cache::allocate(uint32_t endereco, uint32_t posicao){
+int cache::allocate(uint32_t endereco, uint32_t posicao, uint32_t *total_writeback){
 
 	int delay;
 
@@ -135,6 +138,7 @@ int cache::allocate(uint32_t endereco, uint32_t posicao){
 	if(this->blocos[posicao].dirty){
 
 		delay = DELAY_PRINC_MEM;
+		*total_writeback = *total_writeback + 1;
 		ORCS_PRINTF("---------\nDELAY_PRINC_MEM\n-------\n\n");
 	}
 
@@ -156,8 +160,8 @@ int processor_t::read(uint32_t endereco){
 		int delay;
 
 		// ORCS_PRINTF("Buscando:\t%" PRIu32 "\n\n", endereco);
-		// L1->imprimeGrupo(endereco);
-		// L2->imprimeGrupo(endereco);
+		L1->imprimeGrupo(endereco);
+		L2->imprimeGrupo(endereco);
 
 		total_acesso_L1 += 1;
 		delay = L1->latencia;
@@ -175,12 +179,12 @@ int processor_t::read(uint32_t endereco){
 				delay += DELAY_PRINC_MEM;
 
 				miss_L2 += 1;
-				delay += L2->allocate(endereco, posicao_2);
+				delay += L2->allocate(endereco, posicao_2, &total_writeback);
 			}
-			delay += L1->allocate(endereco, posicao_1);
+			delay += L1->allocate(endereco, posicao_1, &total_writeback);
 		}
-		// ORCS_PRINTF("DELAY:\t%d\n\n", delay);
-		// ORCS_PRINTF("--------------------------------------\n\n");	 
+		ORCS_PRINTF("DELAY:\t%d\n\n", delay);
+		ORCS_PRINTF("--------------------------------------\n\n");	 
 		
 		return delay;
 

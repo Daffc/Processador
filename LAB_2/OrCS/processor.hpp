@@ -34,7 +34,7 @@ class cache{
 		
 		// Aloca bloco de "endereço" solicitado no espaço indicado por "posicao" em cache e retorna delay 
 		// provocado pela operação (substituição de dirty block).
-		int allocate(uint32_t endereco, uint32_t posicao);
+		int allocate(uint32_t endereco, uint32_t posicao,uint32_t *total_writeback);
 
 		//Limpar memória usada por cache.
 		void free_cache();
@@ -64,6 +64,8 @@ class processor_t {
 
 		uint32_t total_acesso_L1;
 		uint32_t total_acesso_L2;
+		
+		uint32_t total_writeback;
 		
 		// ====================================================================
 		/// Methods
