@@ -431,7 +431,7 @@ bool trace_reader_t::trace_fetch(opcode_package_t *m) {
 void trace_reader_t::statistics() {
 	ORCS_PRINTF("######################################################\n");
 	ORCS_PRINTF("trace_reader_t\n");
-	ORCS_PRINTF("fetch_instructions:%lu\n", this->fetch_instructions);
+	ORCS_PRINTF("fetch_instructions:\t%lu\n", this->fetch_instructions);
 	
 };
 
