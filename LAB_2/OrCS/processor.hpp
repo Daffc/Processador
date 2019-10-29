@@ -55,7 +55,7 @@ class processor_t {
     
     
     public:
-		unsigned char delay;
+		unsigned int delay;
 		cache	*L1;
 		cache	*L2;
 
