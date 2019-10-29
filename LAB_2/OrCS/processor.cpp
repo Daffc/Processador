@@ -37,8 +37,8 @@ void processor_t::clock() {
 		return;	
 	}
 	
-	if (!orcs_engine.trace_reader->trace_fetch(&new_instruction) || orcs_engine.global_cycle > 20000) {
-	// if (!orcs_engine.trace_reader->trace_fetch(&new_instruction)) {
+	// if (!orcs_engine.trace_reader->trace_fetch(&new_instruction) || orcs_engine.global_cycle > 200000000) {
+	if (!orcs_engine.trace_reader->trace_fetch(&new_instruction)) {
 		/// If EOF
 		ORCS_PRINTF("CLOCKS = %" PRIu64 "\n",orcs_engine.global_cycle);
 		orcs_engine.simulator_alive = false;
@@ -51,18 +51,18 @@ void processor_t::clock() {
 	}
 	else{
 		if(new_instruction.is_read){
-			ORCS_PRINTF("READ\n");		
+			// ORCS_PRINTF("READ\n");		
 			delay += read(new_instruction.read_address);
 		}
 		if(new_instruction.is_read2){
-			ORCS_PRINTF("READ2\n");		
+			// ORCS_PRINTF("READ2\n");		
 			delay += read(new_instruction.read2_address);
 		}
-		if(new_instruction.is_write){
-			ORCS_PRINTF("WRITE\n");			
-			delay += read(new_instruction.write_address);
-			write(new_instruction.write_address);
-		}
+		// if(new_instruction.is_write){
+		// 	ORCS_PRINTF("WRITE\n");			
+		// 	delay += read(new_instruction.write_address);
+		// 	write(new_instruction.write_address);
+		// }
 	}
 };
 
@@ -139,7 +139,6 @@ int cache::allocate(uint32_t endereco, uint32_t posicao, uint32_t *total_writeba
 
 		delay = DELAY_PRINC_MEM;
 		*total_writeback = *total_writeback + 1;
-		ORCS_PRINTF("---------\nDELAY_PRINC_MEM\n-------\n\n");
 	}
 
 	// Atualizando o novo bloco da cache.
@@ -156,38 +155,38 @@ void cache::free_cache(){
 }
 
 int processor_t::read(uint32_t endereco){
-		uint32_t posicao_1, posicao_2;
-		int delay;
+	uint32_t posicao_1, posicao_2;
+	int delay;
 
-		// ORCS_PRINTF("Buscando:\t%" PRIu32 "\n\n", endereco);
-		L1->imprimeGrupo(endereco);
-		L2->imprimeGrupo(endereco);
+	// ORCS_PRINTF("Buscando:\t%" PRIu32 "\n\n", endereco);
+	// L1->imprimeGrupo(endereco);
+	// L2->imprimeGrupo(endereco);
 
-		total_acesso_L1 += 1;
-		delay = L1->latencia;
+	total_acesso_L1 += 1;
+	delay = L1->latencia;
 
-		// Verifica se bloco está em cache e o atualiza, caso não esteja entra no if.
-		if(!L1->search(endereco, &posicao_1)){
-			
-			miss_L1 +=1;
-
-			total_acesso_L2 += 1;
-			delay += L2->latencia;
-
-			// Verifica se bloco está em cache e o atualiza, caso não esteja entra no if.
-			if(!L2->search(endereco, &posicao_2)){
-				delay += DELAY_PRINC_MEM;
-
-				miss_L2 += 1;
-				delay += L2->allocate(endereco, posicao_2, &total_writeback);
-			}
-			delay += L1->allocate(endereco, posicao_1, &total_writeback);
-		}
-		ORCS_PRINTF("DELAY:\t%d\n\n", delay);
-		ORCS_PRINTF("--------------------------------------\n\n");	 
+	// Verifica se bloco está em cache e o atualiza, caso não esteja entra no if.
+	if(!L1->search(endereco, &posicao_1)){
 		
-		return delay;
+		miss_L1 +=1;
+		total_acesso_L2 += 1;
+		delay += L2->latencia;
+		// Verifica se bloco está em cache e o atualiza, caso não esteja entra no if.
+		if(!L2->search(endereco, &posicao_2)){
+			delay += DELAY_PRINC_MEM;
 
+			miss_L2 += 1;
+			// Tras bloco para cache L2.
+			delay += L2->allocate(endereco, posicao_2, &total_writeback);
+		}
+
+		// Tras bloco para cache L1.
+		delay += L1->allocate(endereco, posicao_1, &total_writeback);
+	}
+	// ORCS_PRINTF("DELAY:\t%d\n", delay);
+	// ORCS_PRINTF("--------------------------------------\n\n");	 
+	
+	return delay;
 }
 
 void processor_t::write(uint32_t endereco){
