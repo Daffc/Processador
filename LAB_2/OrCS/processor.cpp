@@ -61,7 +61,6 @@ void processor_t::clock() {
 		if(new_instruction.is_write){
 			// ORCS_PRINTF("WRITE\n");			
 			delay += read(new_instruction.write_address);
-			delay += read(5);
 			write(new_instruction.write_address);
 		}
 	}
