@@ -1,0 +1,13 @@
+CACHE 1:
+offset_operator: 31 	index_operator: 255 	quantidade_vias: 4 	tamanho: 1024 	latencia: 1 	bloco: 0x55952dbe7f40 	
+
+CACHE 2:offset_operator: 31 	index_operator: 1023 	quantidade_vias: 8 	tamanho: 16384 	latencia: 4 	bloco: 0x7f36e3a42010 	
+
+End of dynamic simulation trace
+CLOCKS = 200001517
+End of Simulation
+######################################################
+trace_reader_t
+fetch_instructions:200001517
+######################################################
+processor_t
