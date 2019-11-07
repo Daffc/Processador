@@ -46,11 +46,11 @@ void processor_t::clock() {
 		ORCS_PRINTF("CLOCKS = %" PRIu64 "\n",orcs_engine.global_cycle);
 		orcs_engine.simulator_alive = false;
 
-		// L1->free_cache();
-		// L2->free_cache();
+		L1->free_cache();
+		L2->free_cache();
 
-		// free(L1);
-		// free(L2);
+		free(L1);
+		free(L2);
 	}
 	else{
 		if(new_instruction.is_read){
