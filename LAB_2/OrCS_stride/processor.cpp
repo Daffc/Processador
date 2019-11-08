@@ -21,8 +21,13 @@ processor_t::processor_t() {
 	total_acesso_L2 = 0;
 	total_writeback = 0;
 
-
 	prefetcher.initialize(16, 4, 1);
+	
+	prefetcher.imprime(50);
+	prefetcher.allocate(50, 50);
+	prefetcher.allocate(60, 50);
+	prefetcher.allocate(50, 50);
+	prefetcher.imprime(50);
 };
 
 // =====================================================================
@@ -102,7 +107,7 @@ int processor_t::read(uint32_t endereco){
 		// Verifica se bloco está em cache e o atualiza, caso não esteja entra no if.
 		if(!L2->search(endereco, &posicao_2)){
 			delay += DELAY_PRINC_MEM;
-
+			
 			miss_L2 += 1;
 			// Tras bloco para cache L2.
 			delay += L2->allocate(endereco, posicao_2, &total_writeback);
@@ -264,4 +269,58 @@ void stride_prefetcher::initialize(unsigned char  quantidade_entradas, unsigned 
 
 	this->entradas = (entrada_stride *) malloc( quantidade_entradas * sizeof(entrada_stride));
 	memset(this->entradas, 0, quantidade_entradas * sizeof(entrada_stride));	
+}
+
+void stride_prefetcher::allocate(uint32_t ip, uint32_t memory_address){
+	int entrada, selecionado;	
+
+	// Define Primeira entrada do prefetcher como candidata a substituição.
+	selecionado = 0;
+
+	// Verifica se endereço procurado se encontra em alguma das entradas.
+	for(entrada = 0; entrada < this->quantidade_entradas; entrada++){
+		// Caso endereço seja achado. Parar procura.
+		if(this->entradas[entrada].tag == ip){
+			break;
+		}
+		// Verifica se entrada "selecionado" não é "INVALIDO".
+		if(this->entradas[selecionado].status != INVALIDO){
+			// Verifica se entrada "selecionado" não é "TREINAMENTO" e entrada ENTRADA  é INVALIDO. Se verdadeiro, atualizar "selecionado".
+			if(this->entradas[selecionado].status == TREINAMENTO  && this->entradas[entrada].status == INVALIDO){
+				selecionado = entrada;
+			}
+			else{
+				// Verifica se entrada "selecionado" não é "ATIVO" e entrada ENTRADA  não é ATIVO. Se verdadeiro, atualizar "selecionado".
+				if(this->entradas[selecionado].status == ATIVO && this->entradas[entrada].status != ATIVO){
+					selecionado = entrada;
+				}
+			}
+		}
+	}
+	
+	// Caso "ip" não tenha sido encontrado em nenhuma das entradas. substituir entrada "selecionado" por nova entrada.
+	if(entrada == this->quantidade_entradas){
+		this->entradas[selecionado].tag = ip;
+		this->entradas[selecionado].last_address = memory_address;
+		this->entradas[selecionado].stride = 0;
+		this->entradas[selecionado].status = TREINAMENTO;
+	}
+}
+
+/*-------------------------------------------------*/
+/*--------------------- DEBUG ---------------------*/
+/*-------------------------------------------------*/
+void stride_prefetcher::imprime(uint32_t endereco){
+
+	uint32_t entrada;
+	
+	ORCS_PRINTF("endereco:\t%" PRIu32 "\n", endereco);
+
+	for(entrada = 0; entrada < this->quantidade_entradas; entrada++){
+		ORCS_PRINTF("tag: %" PRIu32 "          \t", this->entradas[entrada].tag);	
+		ORCS_PRINTF("last_address: %" PRIu32 " \t", this->entradas[entrada].last_address);
+		ORCS_PRINTF("stride: %" PRIu32 "       \t", this->entradas[entrada].stride);
+		ORCS_PRINTF("status: %d                \n", this->entradas[entrada].status);
+	}
+	ORCS_PRINTF("------------------------------\n\n");
 }

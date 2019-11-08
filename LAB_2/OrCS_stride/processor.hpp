@@ -64,21 +64,31 @@ enum estados{
 };
 class entrada_stride{
 	public:
-		uint32_t 		tag;
-		uint32_t 		last_address;
-		uint32_t		stride;
-		unsigned char	status;
+		uint32_t 	tag;
+		uint32_t 	last_address;
+		int32_t		stride;
+		estados		status;
 };
 
 class stride_prefetcher{
 	public:
-		entrada_stride 		*entradas;
-		unsigned char		quantidade_entradas;
-		unsigned char 		distance;
-		unsigned char 		degree;
+		entrada_stride 	*entradas;
+		unsigned char	quantidade_entradas;
+		unsigned char 	distance;
+		unsigned char 	degree;
+
 		
 		// Inicializa Dimenções e entradas do prefecher.
 		void initialize(unsigned char  size, unsigned char  distance, unsigned char  degree);
+		// Armazena endereço em entrada de prefetcher.
+		void allocate(uint32_t ip, uint32_t memory_address);
+
+		/*-------------------------------------------------*/
+		/*--------------------- DEBUG ---------------------*/
+		/*-------------------------------------------------*/
+
+		// Imprime todas as entradas do prefetcher e o endereço informado.
+		void imprime(uint32_t endereco);
 };
 // ============================================================================
 // ============================================================================
