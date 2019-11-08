@@ -22,12 +22,7 @@ processor_t::processor_t() {
 	total_writeback = 0;
 
 	prefetcher.initialize(16, 4, 1);
-	
-	prefetcher.imprime(50);
-	prefetcher.allocate(50, 50);
-	prefetcher.allocate(60, 50);
-	prefetcher.allocate(50, 50);
-	prefetcher.imprime(50);
+
 };
 
 // =====================================================================
@@ -45,8 +40,8 @@ void processor_t::clock() {
 		return;	
 	}
 	
-	// if (!orcs_engine.trace_reader->trace_fetch(&new_instruction) || orcs_engine.global_cycle > 200000000) {
-	if (!orcs_engine.trace_reader->trace_fetch(&new_instruction)) {
+	if (!orcs_engine.trace_reader->trace_fetch(&new_instruction) || orcs_engine.global_cycle > 2000000) {
+	// if (!orcs_engine.trace_reader->trace_fetch(&new_instruction)) {
 		/// If EOF
 		ORCS_PRINTF("CLOCKS = %" PRIu64 "\n",orcs_engine.global_cycle);
 		orcs_engine.simulator_alive = false;
@@ -60,15 +55,15 @@ void processor_t::clock() {
 	else{
 		if(new_instruction.is_read){
 			// ORCS_PRINTF("READ\n");		
-			delay += read(new_instruction.read_address);
+			delay += read(new_instruction.opcode_address, new_instruction.read_address);
 		}
 		if(new_instruction.is_read2){
 			// ORCS_PRINTF("READ2\n");		
-			delay += read(new_instruction.read2_address);
+			delay += read(new_instruction.opcode_address, new_instruction.read2_address);
 		}
 		if(new_instruction.is_write){
 			// ORCS_PRINTF("WRITE\n");			
-			delay += read(new_instruction.write_address);
+			delay += read(new_instruction.opcode_address, new_instruction.write_address);
 			write(new_instruction.write_address);
 		}
 	}
@@ -87,34 +82,41 @@ void processor_t::statistics() {
 
 };
 
-int processor_t::read(uint32_t endereco){
+int processor_t::read(uint32_t op_endereco, uint32_t mem_endereco){
 	uint32_t posicao_1, posicao_2;
 	int delay;
 
-	// ORCS_PRINTF("Buscando:\t%" PRIu32 "\n\n", endereco);
-	// L1->imprimeGrupo(endereco);
-	// L2->imprimeGrupo(endereco);
+	// ORCS_PRINTF("Buscando:\t%" PRIu32 "\n\n", mem_endereco);
+	// L1->imprimeGrupo(mem_endereco);
+	// L2->imprimeGrupo(mem_endereco);
 
 	total_acesso_L1 += 1;
 	delay = L1->latencia;
 
 	// Verifica se bloco está em cache e o atualiza, caso não esteja entra no if.
-	if(!L1->search(endereco, &posicao_1)){
+	if(!L1->search(mem_endereco, &posicao_1)){
 		
 		miss_L1 +=1;
 		total_acesso_L2 += 1;
 		delay += L2->latencia;
+
+		this->prefetcher.train(op_endereco, mem_endereco);
+		
 		// Verifica se bloco está em cache e o atualiza, caso não esteja entra no if.
-		if(!L2->search(endereco, &posicao_2)){
+		if(!L2->search(mem_endereco, &posicao_2)){
+
+			// Aloca entrada com "op_endereco" e com "mem_endereco"
+			this->prefetcher.allocate(op_endereco, mem_endereco);
+
 			delay += DELAY_PRINC_MEM;
 			
 			miss_L2 += 1;
 			// Tras bloco para cache L2.
-			delay += L2->allocate(endereco, posicao_2, &total_writeback);
+			delay += L2->allocate(mem_endereco, posicao_2, &total_writeback);
 		}
 
 		// Tras bloco para cache L1.
-		delay += L1->allocate(endereco, posicao_1, &total_writeback);
+		delay += L1->allocate(mem_endereco, posicao_1, &total_writeback);
 	}
 	// ORCS_PRINTF("DELAY:\t%d\n", delay);
 	// ORCS_PRINTF("--------------------------------------\n\n");	 
@@ -271,7 +273,7 @@ void stride_prefetcher::initialize(unsigned char  quantidade_entradas, unsigned 
 	memset(this->entradas, 0, quantidade_entradas * sizeof(entrada_stride));	
 }
 
-void stride_prefetcher::allocate(uint32_t ip, uint32_t memory_address){
+void stride_prefetcher::allocate(uint32_t op_endereco, uint32_t mem_endereco){
 	int entrada, selecionado;	
 
 	// Define Primeira entrada do prefetcher como candidata a substituição.
@@ -279,8 +281,8 @@ void stride_prefetcher::allocate(uint32_t ip, uint32_t memory_address){
 
 	// Verifica se endereço procurado se encontra em alguma das entradas.
 	for(entrada = 0; entrada < this->quantidade_entradas; entrada++){
-		// Caso endereço seja achado. Parar procura.
-		if(this->entradas[entrada].tag == ip){
+		// Caso endereço seja achado em uma entrada válida. Parar de procura.
+		if(this->entradas[entrada].tag == op_endereco && this->entradas[entrada].status != INVALIDO){
 			break;
 		}
 		// Verifica se entrada "selecionado" não é "INVALIDO".
@@ -298,15 +300,54 @@ void stride_prefetcher::allocate(uint32_t ip, uint32_t memory_address){
 		}
 	}
 	
-	// Caso "ip" não tenha sido encontrado em nenhuma das entradas. substituir entrada "selecionado" por nova entrada.
+	// Caso "op_endereco" não tenha sido encontrado em nenhuma das entradas. substituir entrada "selecionado" por nova entrada.
 	if(entrada == this->quantidade_entradas){
-		this->entradas[selecionado].tag = ip;
-		this->entradas[selecionado].last_address = memory_address;
+		this->entradas[selecionado].tag = op_endereco;
+		this->entradas[selecionado].last_address = mem_endereco;
 		this->entradas[selecionado].stride = 0;
 		this->entradas[selecionado].status = TREINAMENTO;
 	}
 }
 
+void stride_prefetcher::train(uint32_t op_endereco, uint32_t mem_endereco){
+
+	int verdadeiro_stride, entrada;
+
+	// Verifica se endereço procurado se encontra em alguma das entradas.
+	for(entrada = 0; entrada < this->quantidade_entradas; entrada++){
+		// Caso endereço seja achado. Parar procura.
+		if(this->entradas[entrada].tag == op_endereco){
+			break;
+		}
+	}
+
+	// Caso entrada para "op_endereco" tenha sido encontrada
+	if(entrada != this->quantidade_entradas){
+		// Verifica se entrada é válida.
+		if(this->entradas[entrada].status != INVALIDO){
+			
+			verdadeiro_stride = mem_endereco - this->entradas[entrada].last_address; 
+			
+			// Verifica se "stride" armazenado é igual ao "verdadeiro_stride".
+			if(this->entradas[entrada].stride == verdadeiro_stride){
+				this->entradas[entrada].status = ATIVO;
+				this->entradas[entrada].last_address = mem_endereco;
+			}
+			// Caso "stride" não seja condizente.
+			else{
+				// Verifica se "status" é de treinamento. caso seja atualiza o "last_address" e "stride".
+				if(this->entradas[entrada].status  == TREINAMENTO){
+					this->entradas[entrada].last_address = mem_endereco;
+					this->entradas[entrada].stride = verdadeiro_stride;
+				}
+				// Caso "status" seja "ATIVO", torná-lo INVALIDO.
+				else{
+					this->entradas[entrada].status = INVALIDO;
+				}
+			}
+		}
+	}	
+}
 /*-------------------------------------------------*/
 /*--------------------- DEBUG ---------------------*/
 /*-------------------------------------------------*/

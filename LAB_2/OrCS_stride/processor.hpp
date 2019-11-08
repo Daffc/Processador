@@ -81,8 +81,12 @@ class stride_prefetcher{
 		
 		// Inicializa Dimenções e entradas do prefecher.
 		void initialize(unsigned char  size, unsigned char  distance, unsigned char  degree);
-		// Armazena endereço em entrada de prefetcher.
-		void allocate(uint32_t ip, uint32_t memory_address);
+		// Armazena endereço da instrução e da requisição em entrada de prefetcher.
+		void allocate(uint32_t op_endereco, uint32_t mem_endereco);
+		// Recebe endereço de instrução "op_endereco" e endereço de memória "mem_endereco" 
+		// e atualiza (caso exista entrada para instrução "op_endereco") "status" do prefetcher 
+		// de acordo com a politica indicada .
+		void train(uint32_t op_endereco, uint32_t mem_endereco);
 
 		/*-------------------------------------------------*/
 		/*--------------------- DEBUG ---------------------*/
@@ -120,8 +124,8 @@ class processor_t {
 	    void statistics();
 		
 
-		// Efetuará todo os processos relacionados a leitura do "endereço", retornando o delay gerado prlo processo.
-		int read(uint32_t endereco);
+		// Efetuará todo os processos relacionados a leitura do "endereço", retornando o delay gerado pelo processo.
+		int read(uint32_t op_endereco, uint32_t endereco_mem);
 
 		// Efetuará todo os processos relacionados a escrita do "endereço" uma vez que este já esteja na L1 (após read).
 		void write(uint32_t endereco);
