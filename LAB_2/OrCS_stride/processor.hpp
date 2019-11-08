@@ -15,6 +15,7 @@ class block {
 		uint64_t time;
 		char	validade;
 		char	dirty;
+		uint64_t ready_cycle;
 };
 
 class cache{
