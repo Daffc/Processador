@@ -23,6 +23,44 @@ processor_t::processor_t() {
 
 	prefetcher.initialize(16, 4, 1);
 
+	prefetcher.allocate(20, 40);
+	prefetcher.imprime(20);
+
+	prefetcher.train(20, 30);
+	prefetcher.imprime(20);
+
+	prefetcher.train(20, 50);
+	prefetcher.imprime(20);
+
+	prefetcher.train(20, 60);
+	prefetcher.imprime(20);
+
+	prefetcher.train(20, 70);
+	prefetcher.imprime(20);
+
+	prefetcher.allocate(30, 20);
+	prefetcher.imprime(30);
+
+	prefetcher.train(30, 100);
+	prefetcher.imprime(30);
+
+	prefetcher.train(20, 80);
+	prefetcher.imprime(20);
+
+	prefetcher.train(30, 200);
+	prefetcher.imprime(30);
+
+	prefetcher.train(20, 10);
+	prefetcher.imprime(20);
+
+	prefetcher.train(30, 300);
+	prefetcher.imprime(30);
+	
+	for(int i = 0; i <= 100; i+=10)
+		if(prefetcher.search(i) != prefetcher.quantidade_entradas)
+			ORCS_PRINTF("PARA %d\t resultado = %d\n", i, prefetcher.search(i));
+
+
 };
 
 // =====================================================================
@@ -229,6 +267,9 @@ int cache::allocate(uint32_t endereco, uint32_t posicao, uint32_t *total_writeba
 	this->blocos[posicao].validade = 1;
 	this->blocos[posicao].dirty = 0;
 
+	//Definindo quando bloco estará pronto (somente para L2)
+	this->blocos[posicao].ready_cycle = orcs_engine.global_cycle + DELAY_PRINC_MEM;
+
 	return delay;
 }
 
@@ -348,6 +389,19 @@ void stride_prefetcher::train(uint32_t op_endereco, uint32_t mem_endereco){
 		}
 	}	
 }
+
+int stride_prefetcher::search(uint32_t op_endereco){
+	uint32_t entrada;
+
+	// Verifica se endereço procurado se encontra em alguma das entradas.
+	for(entrada = 0; entrada < this->quantidade_entradas; entrada++){
+		// Caso endereço seja achado em uma entrada válida. Parar de procura.
+		if(this->entradas[entrada].tag == op_endereco && this->entradas[entrada].status == ATIVO){
+			return entrada;
+		}
+	}
+	return entrada;
+}
 /*-------------------------------------------------*/
 /*--------------------- DEBUG ---------------------*/
 /*-------------------------------------------------*/
@@ -360,7 +414,7 @@ void stride_prefetcher::imprime(uint32_t endereco){
 	for(entrada = 0; entrada < this->quantidade_entradas; entrada++){
 		ORCS_PRINTF("tag: %" PRIu32 "          \t", this->entradas[entrada].tag);	
 		ORCS_PRINTF("last_address: %" PRIu32 " \t", this->entradas[entrada].last_address);
-		ORCS_PRINTF("stride: %" PRIu32 "       \t", this->entradas[entrada].stride);
+		ORCS_PRINTF("stride: %" PRId32 "       \t", this->entradas[entrada].stride);
 		ORCS_PRINTF("status: %d                \n", this->entradas[entrada].status);
 	}
 	ORCS_PRINTF("------------------------------\n\n");

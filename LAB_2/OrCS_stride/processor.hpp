@@ -88,6 +88,9 @@ class stride_prefetcher{
 		// de acordo com a politica indicada .
 		void train(uint32_t op_endereco, uint32_t mem_endereco);
 
+		// Função que verifica se existe entrata ATIVA referente a operação "op_endereco"
+		int search(uint32_t op_endereco);
+
 		/*-------------------------------------------------*/
 		/*--------------------- DEBUG ---------------------*/
 		/*-------------------------------------------------*/
