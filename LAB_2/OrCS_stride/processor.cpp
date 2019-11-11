@@ -22,68 +22,6 @@ processor_t::processor_t() {
 	total_writeback = 0;
 
 	prefetcher.initialize(16, 4, 1);
-
-	prefetcher.allocate(20, 40);
-	prefetcher.imprime(20);
-	prefetcher.prefetch(16,L2);
-	L2->imprimeGrupo(40 + 10);
-	ORCS_PRINTF("------------------------------\n\n");
-
-	prefetcher.train(20, 50);
-	prefetcher.imprime(20);
-	prefetcher.prefetch(16,L2);
-	L2->imprimeGrupo(60);
-ORCS_PRINTF("------------------------------\n\n");
-
-	prefetcher.train(20, 60);
-	prefetcher.imprime(20);
-	prefetcher.prefetch(16,L2);
-	L2->imprimeGrupo(70);
-ORCS_PRINTF("------------------------------\n\n");
-
-	prefetcher.train(20, 70);
-	prefetcher.imprime(20);
-	prefetcher.prefetch(16,L2);
-	L2->imprimeGrupo(80);
-ORCS_PRINTF("------------------------------\n\n");
-
-	prefetcher.train(20, 80);
-	prefetcher.imprime(20);
-	prefetcher.prefetch(16,L2);
-	L2->imprimeGrupo(90);
-ORCS_PRINTF("------------------------------\n\n");
-
-	prefetcher.train(20, 90);
-	prefetcher.imprime(20);
-	prefetcher.prefetch(16,L2);
-	L2->imprimeGrupo(100);
-ORCS_PRINTF("------------------------------\n\n");
-	prefetcher.allocate(30, 130);
-	prefetcher.train(30, 150);
-	prefetcher.imprime(30);
-	prefetcher.prefetch(26,L2);
-	L2->imprimeGrupo(160);
-ORCS_PRINTF("------------------------------\n\n");
-	prefetcher.train(30, 170);
-	prefetcher.imprime(30);
-	prefetcher.prefetch(26,L2);
-	L2->imprimeGrupo(190);
-ORCS_PRINTF("------------------------------\n\n");
-	prefetcher.train(30, 190);
-	prefetcher.imprime(30);
-	prefetcher.prefetch(26,L2);
-	L2->imprimeGrupo(210);
-ORCS_PRINTF("------------------------------\n\n");
-
-	for(int i = 0; i <= 100; i+=10)
-		if(prefetcher.search(i) != prefetcher.quantidade_entradas)
-			ORCS_PRINTF("PARA %d\t resultado = %d\n", i, prefetcher.search(i));
-
-	opcode_package_t new_instruction;
-
-	ORCS_PRINTF("CLOCKS = %" PRIu64 "\n",orcs_engine.global_cycle);
-
-	ORCS_PRINTF("CLOCKS = %" PRIu64 "\n",orcs_engine.global_cycle);
 };
 
 // =====================================================================
@@ -100,8 +38,8 @@ void processor_t::clock() {
 		delay--;
 		return;	
 	}
-	
-	if (!orcs_engine.trace_reader->trace_fetch(&new_instruction) || orcs_engine.global_cycle > 2000000) {
+
+	if (!orcs_engine.trace_reader->trace_fetch(&new_instruction) || orcs_engine.trace_reader->fetch_instructions == 2000) {
 	// if (!orcs_engine.trace_reader->trace_fetch(&new_instruction)) {
 		/// If EOF
 		ORCS_PRINTF("CLOCKS = %" PRIu64 "\n",orcs_engine.global_cycle);
@@ -114,6 +52,9 @@ void processor_t::clock() {
 		free(L2);
 	}
 	else{
+
+		prefetcher.prefetch(new_instruction.opcode_address, L2);
+		
 		if(new_instruction.is_read){
 			// ORCS_PRINTF("READ\n");		
 			delay += read(new_instruction.opcode_address, new_instruction.read_address);
