@@ -16,9 +16,9 @@ class trace_reader_t {
         uint32_t *binary_bbl_size;      /// Total of instructions for each BBL
         opcode_package_t **binary_dict; /// Complete dictionary of BBLs and instructions
 
-		uint64_t fetch_instructions;
 
     public:
+		uint64_t fetch_instructions;
         // ====================================================================
         /// Methods
         // ====================================================================
