@@ -91,12 +91,16 @@ class stride_prefetcher{
 		// Função que verifica se existe entrata ATIVA referente a operação "op_endereco"
 		int search(uint32_t op_endereco);
 
+		// Função que, de acordo com o endereco da operação atual + prefetcher.distance, 
+		// verificará e efetuará prefetch se necessário.
+		void prefetch(uint32_t op_endereco, cache * cache);
 		/*-------------------------------------------------*/
 		/*--------------------- DEBUG ---------------------*/
 		/*-------------------------------------------------*/
 
 		// Imprime todas as entradas do prefetcher e o endereço informado.
 		void imprime(uint32_t endereco);
+		
 };
 // ============================================================================
 // ============================================================================

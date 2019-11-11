@@ -25,42 +25,65 @@ processor_t::processor_t() {
 
 	prefetcher.allocate(20, 40);
 	prefetcher.imprime(20);
-
-	prefetcher.train(20, 30);
-	prefetcher.imprime(20);
+	prefetcher.prefetch(16,L2);
+	L2->imprimeGrupo(40 + 10);
+	ORCS_PRINTF("------------------------------\n\n");
 
 	prefetcher.train(20, 50);
 	prefetcher.imprime(20);
+	prefetcher.prefetch(16,L2);
+	L2->imprimeGrupo(60);
+ORCS_PRINTF("------------------------------\n\n");
 
 	prefetcher.train(20, 60);
 	prefetcher.imprime(20);
+	prefetcher.prefetch(16,L2);
+	L2->imprimeGrupo(70);
+ORCS_PRINTF("------------------------------\n\n");
 
 	prefetcher.train(20, 70);
 	prefetcher.imprime(20);
-
-	prefetcher.allocate(30, 20);
-	prefetcher.imprime(30);
-
-	prefetcher.train(30, 100);
-	prefetcher.imprime(30);
+	prefetcher.prefetch(16,L2);
+	L2->imprimeGrupo(80);
+ORCS_PRINTF("------------------------------\n\n");
 
 	prefetcher.train(20, 80);
 	prefetcher.imprime(20);
+	prefetcher.prefetch(16,L2);
+	L2->imprimeGrupo(90);
+ORCS_PRINTF("------------------------------\n\n");
 
-	prefetcher.train(30, 200);
-	prefetcher.imprime(30);
-
-	prefetcher.train(20, 10);
+	prefetcher.train(20, 90);
 	prefetcher.imprime(20);
-
-	prefetcher.train(30, 300);
+	prefetcher.prefetch(16,L2);
+	L2->imprimeGrupo(100);
+ORCS_PRINTF("------------------------------\n\n");
+	prefetcher.allocate(30, 130);
+	prefetcher.train(30, 150);
 	prefetcher.imprime(30);
-	
+	prefetcher.prefetch(26,L2);
+	L2->imprimeGrupo(160);
+ORCS_PRINTF("------------------------------\n\n");
+	prefetcher.train(30, 170);
+	prefetcher.imprime(30);
+	prefetcher.prefetch(26,L2);
+	L2->imprimeGrupo(190);
+ORCS_PRINTF("------------------------------\n\n");
+	prefetcher.train(30, 190);
+	prefetcher.imprime(30);
+	prefetcher.prefetch(26,L2);
+	L2->imprimeGrupo(210);
+ORCS_PRINTF("------------------------------\n\n");
+
 	for(int i = 0; i <= 100; i+=10)
 		if(prefetcher.search(i) != prefetcher.quantidade_entradas)
 			ORCS_PRINTF("PARA %d\t resultado = %d\n", i, prefetcher.search(i));
 
+	opcode_package_t new_instruction;
 
+	ORCS_PRINTF("CLOCKS = %" PRIu64 "\n",orcs_engine.global_cycle);
+
+	ORCS_PRINTF("CLOCKS = %" PRIu64 "\n",orcs_engine.global_cycle);
 };
 
 // =====================================================================
@@ -402,6 +425,40 @@ int stride_prefetcher::search(uint32_t op_endereco){
 	}
 	return entrada;
 }
+
+void stride_prefetcher::prefetch(uint32_t op_endereco, cache * cache){
+	uint32_t entrada, melhor_posicao, endereco_futuro, dummy, endereco_mem;
+
+	endereco_futuro = op_endereco + this->distance;
+
+	ORCS_PRINTF("\n\n");
+	ORCS_PRINTF("++++++++++ PREFETCH +++++++\n");
+	ORCS_PRINTF("op_endereco: %" PRIu32 "          \n", op_endereco);	
+	ORCS_PRINTF("CLOCKS = %" PRIu64 "\n",orcs_engine.global_cycle);
+	ORCS_PRINTF("endereco_futuro: %" PRIu32 " \n\n", endereco_futuro);
+
+	// Verifica se endereço procurado se encontra em alguma das entradas.
+	for(entrada = 0; entrada < this->quantidade_entradas; entrada++){
+		// Caso endereço seja achado em uma entrada válida. Parar de procura.
+		if(this->entradas[entrada].tag == endereco_futuro && this->entradas[entrada].status == ATIVO){
+			break;
+		}
+	}
+	// Caso entrada de "status" "ATIVO" tenha sido encontrada para "endereco_futuro"
+	if(entrada != this->quantidade_entradas){
+		
+		// Calcula endereco de memória que sofrerá prefetch.
+		endereco_mem = this->entradas[entrada].last_address + this->entradas[entrada].stride;
+		// cache->imprimeGrupo(endereco_mem);
+		// Verifica se valor já não se encontra na cache.
+		if(!cache->search( endereco_mem, &melhor_posicao)){
+			// Caso não esteja na cache, alocar e definir tempo em que os dados estarão prontos.
+			cache->allocate(endereco_mem, melhor_posicao, &dummy);
+		}
+		// cache->imprimeGrupo(endereco_mem);
+	}
+}
+
 /*-------------------------------------------------*/
 /*--------------------- DEBUG ---------------------*/
 /*-------------------------------------------------*/
@@ -417,5 +474,5 @@ void stride_prefetcher::imprime(uint32_t endereco){
 		ORCS_PRINTF("stride: %" PRId32 "       \t", this->entradas[entrada].stride);
 		ORCS_PRINTF("status: %d                \n", this->entradas[entrada].status);
 	}
-	ORCS_PRINTF("------------------------------\n\n");
+	// ORCS_PRINTF("------------------------------\n\n");
 }
