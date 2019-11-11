@@ -39,7 +39,7 @@ void processor_t::clock() {
 		return;	
 	}
 
-	if (!orcs_engine.trace_reader->trace_fetch(&new_instruction) || orcs_engine.trace_reader->fetch_instructions == 2000) {
+	if (!orcs_engine.trace_reader->trace_fetch(&new_instruction) || orcs_engine.trace_reader->fetch_instructions == 200) {
 	// if (!orcs_engine.trace_reader->trace_fetch(&new_instruction)) {
 		/// If EOF
 		ORCS_PRINTF("CLOCKS = %" PRIu64 "\n",orcs_engine.global_cycle);
@@ -114,11 +114,11 @@ int processor_t::read(uint32_t op_endereco, uint32_t mem_endereco){
 			
 			miss_L2 += 1;
 			// Tras bloco para cache L2.
-			delay += L2->allocate(mem_endereco, posicao_2, &total_writeback);
+			delay += L2->allocate(mem_endereco, posicao_2, &total_writeback, false);
 		}
 
 		// Tras bloco para cache L1.
-		delay += L1->allocate(mem_endereco, posicao_1, &total_writeback);
+		delay += L1->allocate(mem_endereco, posicao_1, &total_writeback, false);
 	}
 	// ORCS_PRINTF("DELAY:\t%d\n", delay);
 	// ORCS_PRINTF("--------------------------------------\n\n");	 
@@ -211,7 +211,7 @@ int cache::search(uint32_t endereco, uint32_t* melhor_posicao){
 	return 0;
 }
 
-int cache::allocate(uint32_t endereco, uint32_t posicao, uint32_t *total_writeback){
+int cache::allocate(uint32_t endereco, uint32_t posicao, uint32_t *total_writeback, bool prefetched){
 
 	int delay;
 
@@ -231,8 +231,11 @@ int cache::allocate(uint32_t endereco, uint32_t posicao, uint32_t *total_writeba
 	this->blocos[posicao].validade = 1;
 	this->blocos[posicao].dirty = 0;
 
-	//Definindo quando bloco estará pronto (somente para L2)
+	//Definindo quando bloco estará pronto (somente para L2).
 	this->blocos[posicao].ready_cycle = orcs_engine.global_cycle + DELAY_PRINC_MEM;
+
+	// Marca se bloco é resultado de um prefetch.
+	this->blocos[posicao].prefetched = prefetched;
 
 	return delay;
 }
@@ -259,7 +262,9 @@ void cache::imprimeGrupo(uint32_t endereco){
 		ORCS_PRINTF("endereco: %" PRIu32 " \t", this->blocos[grupo + i].endereco);	
 		ORCS_PRINTF("time: %" PRIu64 " \t", this->blocos[grupo + i].time);
 		ORCS_PRINTF("validade: %d \t", this->blocos[grupo + i].validade);
-		ORCS_PRINTF("dirty: %d \n", this->blocos[grupo + i].dirty);
+		ORCS_PRINTF("dirty: %d \t", this->blocos[grupo + i].dirty);
+		ORCS_PRINTF("ready_cycle: %" PRIu64 " \t", this->blocos[grupo + i].ready_cycle);
+		ORCS_PRINTF("prefetched: %d \n", this->blocos[grupo + i].prefetched);
 	}
 	ORCS_PRINTF("\n");
 }
@@ -390,13 +395,13 @@ void stride_prefetcher::prefetch(uint32_t op_endereco, cache * cache){
 		
 		// Calcula endereco de memória que sofrerá prefetch.
 		endereco_mem = this->entradas[entrada].last_address + this->entradas[entrada].stride;
-		// cache->imprimeGrupo(endereco_mem);
+		cache->imprimeGrupo(endereco_mem);
 		// Verifica se valor já não se encontra na cache.
 		if(!cache->search( endereco_mem, &melhor_posicao)){
 			// Caso não esteja na cache, alocar e definir tempo em que os dados estarão prontos.
-			cache->allocate(endereco_mem, melhor_posicao, &dummy);
+			cache->allocate(endereco_mem, melhor_posicao, &dummy, true);
 		}
-		// cache->imprimeGrupo(endereco_mem);
+		cache->imprimeGrupo(endereco_mem);
 	}
 }
 

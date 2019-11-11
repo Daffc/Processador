@@ -11,11 +11,12 @@ class block {
 	private:
 
 	public:
-		uint32_t endereco;
-		uint64_t time;
-		char	validade;
-		char	dirty;
-		uint64_t ready_cycle;
+		uint32_t 	endereco;
+		uint64_t 	time;
+		char		validade;
+		char		dirty;
+		uint64_t 	ready_cycle;
+		bool		prefetched;
 };
 
 class cache{
@@ -40,7 +41,7 @@ class cache{
 		
 		// Aloca bloco de "endereço" solicitado no espaço indicado por "posicao" em cache e retorna delay 
 		// provocado pela operação (substituição de dirty block).
-		int allocate(uint32_t endereco, uint32_t posicao,uint32_t *total_writeback);
+		int allocate(uint32_t endereco, uint32_t posicao,uint32_t *total_writeback, bool prefetched);
 
 		//Limpar memória usada por cache.
 		void free_cache();
