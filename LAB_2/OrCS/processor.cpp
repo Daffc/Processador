@@ -79,6 +79,77 @@ void processor_t::statistics() {
 
 };
 
+int processor_t::read(uint32_t endereco){
+	uint32_t posicao_1, posicao_2;
+	int delay;
+
+	// L1->imprimeGrupo(endereco);
+	// L2->imprimeGrupo(endereco);
+
+	total_acesso_L1 += 1;
+	delay = L1->latencia;
+
+	// Verifica se bloco está em cache e o atualiza, caso não esteja entra no if.
+	if(!L1->search(endereco, &posicao_1)){
+		
+		miss_L1 +=1;
+		total_acesso_L2 += 1;
+		delay += L2->latencia;
+		// Verifica se bloco está em cache e o atualiza, caso não esteja entra no if.
+		if(!L2->search(endereco, &posicao_2)){			// delay += DELAY_PRINC_MEM;
+
+			miss_L2 += 1;
+			// Tras bloco para cache L2.
+			delay += L2->allocate(endereco, posicao_2, &total_writeback);
+		}
+
+		// Tras bloco para cache L1.
+		delay += L1->allocate(endereco, posicao_1, &total_writeback);
+	}
+	// ORCS_PRINTF("DELAY:\t%d\n", delay);
+	// ORCS_PRINTF("--------------------------------------\n\n");	 
+	
+	return delay;
+}
+
+void processor_t::write(uint32_t endereco){
+	uint32_t index, grupo, tag;
+	uint32_t i;
+
+	// Prepavra variáveis para busca em L1.
+	index = (endereco >> L1->offset_bits) & L1->index_operator;
+	grupo = index * L1->quantidade_vias;
+	tag = endereco >> (L1->offset_bits + L1->index_bits);
+	
+	// Procura bloco referente ao endereço em L1.
+	for( i = 0; i < L1->quantidade_vias; i++){
+		// marca bloco como sujo.
+		if((L1->blocos[grupo + i].tag == tag)){
+
+			L1->blocos[grupo + i].dirty = 1;
+			break;
+		}
+	}
+	
+	// Prepara variáveis para busca em L2
+	index = (endereco >> L2->offset_bits) & L2->index_operator;
+	grupo = index * L2->quantidade_vias;
+	tag = endereco >> (L2->offset_bits + L2->index_bits);
+
+	// Procura bloco referente ao endereço em L2
+	for( i = 0; i < L2->quantidade_vias; i++){
+		// Marca bloco como invalido.
+		if((L2->blocos[grupo + i].tag == tag)){
+
+			L2->blocos[grupo + i].validade = 0;
+			break;
+		}
+	}
+}
+
+/***********************************************/
+/************* METODOS DA CACHE ****************/
+/***********************************************/
 
 void cache::initialize(const char* nome, uint32_t offset_operator, uint32_t offset_bits, uint32_t index_operator, uint32_t index_bits, uint32_t vias, uint32_t tamanho, unsigned char delay){
 	memcpy(this->nome, nome, 4);
@@ -160,73 +231,7 @@ void cache::free_cache(){
 	free(this->blocos);
 }
 
-int processor_t::read(uint32_t endereco){
-	uint32_t posicao_1, posicao_2;
-	int delay;
 
-	// L1->imprimeGrupo(endereco);
-	// L2->imprimeGrupo(endereco);
-
-	total_acesso_L1 += 1;
-	delay = L1->latencia;
-
-	// Verifica se bloco está em cache e o atualiza, caso não esteja entra no if.
-	if(!L1->search(endereco, &posicao_1)){
-		
-		miss_L1 +=1;
-		total_acesso_L2 += 1;
-		delay += L2->latencia;
-		// Verifica se bloco está em cache e o atualiza, caso não esteja entra no if.
-		if(!L2->search(endereco, &posicao_2)){			// delay += DELAY_PRINC_MEM;
-
-			miss_L2 += 1;
-			// Tras bloco para cache L2.
-			delay += L2->allocate(endereco, posicao_2, &total_writeback);
-		}
-
-		// Tras bloco para cache L1.
-		delay += L1->allocate(endereco, posicao_1, &total_writeback);
-	}
-	// ORCS_PRINTF("DELAY:\t%d\n", delay);
-	// ORCS_PRINTF("--------------------------------------\n\n");	 
-	
-	return delay;
-}
-
-void processor_t::write(uint32_t endereco){
-	uint32_t index, grupo, tag;
-	uint32_t i;
-
-	// Prepavra variáveis para busca em L1.
-	index = (endereco >> L1->offset_bits) & L1->index_operator;
-	grupo = index * L1->quantidade_vias;
-	tag = endereco >> (L1->offset_bits + L1->index_bits);
-	
-	// Procura bloco referente ao endereço em L1.
-	for( i = 0; i < L1->quantidade_vias; i++){
-		// marca bloco como sujo.
-		if((L1->blocos[grupo + i].tag == tag)){
-
-			L1->blocos[grupo + i].dirty = 1;
-			break;
-		}
-	}
-	
-	// Prepara variáveis para busca em L2
-	index = (endereco >> L2->offset_bits) & L2->index_operator;
-	grupo = index * L2->quantidade_vias;
-	tag = endereco >> (L2->offset_bits + L2->index_bits);
-
-	// Procura bloco referente ao endereço em L2
-	for( i = 0; i < L2->quantidade_vias; i++){
-		// Marca bloco como invalido.
-		if((L2->blocos[grupo + i].tag == tag)){
-
-			L2->blocos[grupo + i].validade = 0;
-			break;
-		}
-	}
-}
 
 /*-------------------------------------------------*/
 /*--------------------- DEBUG ---------------------*/
