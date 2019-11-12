@@ -20,45 +20,6 @@ processor_t::processor_t() {
 	total_acesso_L1 = 0;
 	total_acesso_L2 = 0;
 	total_writeback = 0;
-
-	// uint32_t posicao_1;
-
-
-	// this->read(144719870);
-	// L1->imprimeGrupo(144719870);
-	// L2->imprimeGrupo(144719870);
-	// ORCS_PRINTF("************************************\n");
-
-	// this->read(148914174);
-	// L1->imprimeGrupo(148914174);
-	// L2->imprimeGrupo(148914174);
-	// ORCS_PRINTF("************************************\n");
-
-	// this->read(182468606);
-	// L1->imprimeGrupo(182468606);
-	// L2->imprimeGrupo(182468606);
-	// ORCS_PRINTF("************************************\n");
-	
-
-	// this->read(199245822);
-	// L1->imprimeGrupo(199245822);
-	// L2->imprimeGrupo(199245822);
-	// ORCS_PRINTF("************************************\n");
-
-	// this->write(144719870);
-
-	// L1->imprimeGrupo(144719870);
-	// L2->imprimeGrupo(144719870);
-	// ORCS_PRINTF("************************************\n");
-
-	// this->read(719339462);
-	// L1->imprimeGrupo(719339462);
-	// L2->imprimeGrupo(719339462);
-	// ORCS_PRINTF("************************************\n");
-	
-
-
-	// posicao_1 = scanf("%" PRIu32 " ", &posicao_1);
 };
 
 // =====================================================================
@@ -216,9 +177,7 @@ int processor_t::read(uint32_t endereco){
 		total_acesso_L2 += 1;
 		delay += L2->latencia;
 		// Verifica se bloco está em cache e o atualiza, caso não esteja entra no if.
-		if(!L2->search(endereco, &posicao_2)){
-			L2->imprimeGrupo(endereco);
-			delay += DELAY_PRINC_MEM;
+		if(!L2->search(endereco, &posicao_2)){			// delay += DELAY_PRINC_MEM;
 
 			miss_L2 += 1;
 			// Tras bloco para cache L2.
