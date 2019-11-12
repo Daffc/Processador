@@ -6,10 +6,10 @@ class block {
 	private:
 
 	public:
-		uint32_t endereco;
+		uint32_t tag;
 		uint64_t time;
-		char	validade;
-		char	dirty;
+		char	 validade;
+		char	 dirty;
 };
 
 class cache{
@@ -20,13 +20,15 @@ class cache{
 		char     nome[5] ;
 		block 	 *blocos;
 		uint32_t offset_operator;
+		uint32_t offset_bits;
 		uint32_t index_operator;
+		uint32_t index_bits;
 		uint32_t quantidade_vias;
 		uint32_t tamanho;
 		unsigned char latencia;
 
 		// Criar e instanciar cache.
-		void initialize(const char* nome, uint32_t offset, uint32_t index, uint32_t vias, uint32_t tamanho, unsigned char delay);
+		void initialize(const char* nome, uint32_t offset_operator, uint32_t Offset_bits, uint32_t index_operator, uint32_t index_bits, uint32_t vias, uint32_t tamanho, unsigned char delay);
 		
 		// Procurar por bloco de informado na cache, caso ache returna 1, 
 		// caso não ache, retorna 0 e melhor posição em *melhor_posicao

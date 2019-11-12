@@ -11,8 +11,8 @@ processor_t::processor_t() {
 	L2 = (cache *) malloc(sizeof(cache));
 	
 	//Inicializando caches.
-	L1->initialize("L1", 63, 255, 4, 1024, 1);
-	L2->initialize("L2", 63, 1023, 8, 16384, 4);
+	L1->initialize("L1", 63, 6, 255, 8, 4, 1024, 1);
+	L2->initialize("L2", 63, 6, 1023, 10, 8, 16384, 4);
 
 	// Inicializando contadores.
 	miss_L1 = 0;
@@ -20,6 +20,45 @@ processor_t::processor_t() {
 	total_acesso_L1 = 0;
 	total_acesso_L2 = 0;
 	total_writeback = 0;
+
+	// uint32_t posicao_1;
+
+
+	// this->read(144719870);
+	// L1->imprimeGrupo(144719870);
+	// L2->imprimeGrupo(144719870);
+	// ORCS_PRINTF("************************************\n");
+
+	// this->read(148914174);
+	// L1->imprimeGrupo(148914174);
+	// L2->imprimeGrupo(148914174);
+	// ORCS_PRINTF("************************************\n");
+
+	// this->read(182468606);
+	// L1->imprimeGrupo(182468606);
+	// L2->imprimeGrupo(182468606);
+	// ORCS_PRINTF("************************************\n");
+	
+
+	// this->read(199245822);
+	// L1->imprimeGrupo(199245822);
+	// L2->imprimeGrupo(199245822);
+	// ORCS_PRINTF("************************************\n");
+
+	// this->write(144719870);
+
+	// L1->imprimeGrupo(144719870);
+	// L2->imprimeGrupo(144719870);
+	// ORCS_PRINTF("************************************\n");
+
+	// this->read(719339462);
+	// L1->imprimeGrupo(719339462);
+	// L2->imprimeGrupo(719339462);
+	// ORCS_PRINTF("************************************\n");
+	
+
+
+	// posicao_1 = scanf("%" PRIu32 " ", &posicao_1);
 };
 
 // =====================================================================
@@ -37,7 +76,7 @@ void processor_t::clock() {
 		return;	
 	}
 	
-	// if (!orcs_engine.trace_reader->trace_fetch(&new_instruction) || orcs_engine.global_cycle > 200000000) {
+	// if (!orcs_engine.trace_reader->trace_fetch(&new_instruction) || orcs_engine.global_cycle > 200000) {
 	if (!orcs_engine.trace_reader->trace_fetch(&new_instruction)) {
 		/// If EOF
 		ORCS_PRINTF("CLOCKS = %" PRIu64 "\n",orcs_engine.global_cycle);
@@ -80,10 +119,12 @@ void processor_t::statistics() {
 };
 
 
-void cache::initialize(const char* nome,uint32_t offset, uint32_t index, uint32_t vias, uint32_t tamanho, unsigned char delay){
+void cache::initialize(const char* nome, uint32_t offset_operator, uint32_t offset_bits, uint32_t index_operator, uint32_t index_bits, uint32_t vias, uint32_t tamanho, unsigned char delay){
 	memcpy(this->nome, nome, 4);
-	this->offset_operator = offset;
-	this->index_operator = index;
+	this->offset_operator = offset_operator;
+	this->offset_bits = offset_bits;
+	this->index_operator = index_operator;
+	this->index_bits = index_bits;
 	this->quantidade_vias = vias;
 	this->tamanho = tamanho;
 	this->latencia = delay;
@@ -93,12 +134,12 @@ void cache::initialize(const char* nome,uint32_t offset, uint32_t index, uint32_
 }
 
 int cache::search(uint32_t endereco, uint32_t* melhor_posicao){
-	uint32_t index, grupo, older, selected;
+	uint32_t index, grupo, older, selected, tag;
 	uint32_t i;
 
-	index = (endereco >> BLOCK_BIT_SIZE) & this->index_operator;
+	index = (endereco >> this->offset_bits) & this->index_operator;
 	grupo = index * this->quantidade_vias;
-
+	tag = endereco >> (this->offset_bits + this->index_bits);
 	older = UINT32_MAX;
 
 	// Deifine primeiro elemento do conjunto associativo como "selected".
@@ -106,7 +147,7 @@ int cache::search(uint32_t endereco, uint32_t* melhor_posicao){
 
 	for( i = 0; i < this->quantidade_vias; i++){
 		// Caso bloco procurado seja encontrado e esteja válido, atualize o seu tempo de acesso e retorne 1.
-		if((this->blocos[grupo + i].endereco == endereco) && this->blocos[grupo + i].validade ){
+		if((this->blocos[grupo + i].tag == tag) && this->blocos[grupo + i].validade ){
 			this->blocos[grupo + i].time = orcs_engine.global_cycle;
 			return 1;
 		}
@@ -129,23 +170,27 @@ int cache::search(uint32_t endereco, uint32_t* melhor_posicao){
 
 int cache::allocate(uint32_t endereco, uint32_t posicao, uint32_t *total_writeback){
 
-	int delay;
+	int delay, tag;
+
+	tag = endereco >> (this->offset_bits + this->index_bits);
 
 	delay = 0;
 	
 	// Caso bloco substituido esteja "sujo", 
 	// aplicar delay de escrita em memória principal.
-	if(this->blocos[posicao].dirty){
+	
 
+	if(this->blocos[posicao].dirty){
 		delay = DELAY_PRINC_MEM;
 		*total_writeback = *total_writeback + 1;
 	}
 
 	// Atualizando o novo bloco da cache.
-	this->blocos[posicao].endereco = endereco;
+	this->blocos[posicao].tag = tag;
 	this->blocos[posicao].time = orcs_engine.global_cycle;
 	this->blocos[posicao].validade = 1;
 	this->blocos[posicao].dirty = 0;
+
 
 	return delay;
 }
@@ -158,7 +203,6 @@ int processor_t::read(uint32_t endereco){
 	uint32_t posicao_1, posicao_2;
 	int delay;
 
-	// ORCS_PRINTF("Buscando:\t%" PRIu32 "\n\n", endereco);
 	// L1->imprimeGrupo(endereco);
 	// L2->imprimeGrupo(endereco);
 
@@ -173,6 +217,7 @@ int processor_t::read(uint32_t endereco){
 		delay += L2->latencia;
 		// Verifica se bloco está em cache e o atualiza, caso não esteja entra no if.
 		if(!L2->search(endereco, &posicao_2)){
+			L2->imprimeGrupo(endereco);
 			delay += DELAY_PRINC_MEM;
 
 			miss_L2 += 1;
@@ -190,31 +235,33 @@ int processor_t::read(uint32_t endereco){
 }
 
 void processor_t::write(uint32_t endereco){
-	uint32_t index, grupo;
+	uint32_t index, grupo, tag;
 	uint32_t i;
 
 	// Prepavra variáveis para busca em L1.
-	index = (endereco >> BLOCK_BIT_SIZE) & L1->index_operator;
+	index = (endereco >> L1->offset_bits) & L1->index_operator;
 	grupo = index * L1->quantidade_vias;
-
+	tag = endereco >> (L1->offset_bits + L1->index_bits);
+	
 	// Procura bloco referente ao endereço em L1.
 	for( i = 0; i < L1->quantidade_vias; i++){
 		// marca bloco como sujo.
-		if((L1->blocos[grupo + i].endereco == endereco)){
+		if((L1->blocos[grupo + i].tag == tag)){
 
 			L1->blocos[grupo + i].dirty = 1;
 			break;
 		}
 	}
-
+	
 	// Prepara variáveis para busca em L2
-	index = (endereco >> BLOCK_BIT_SIZE) & L2->index_operator;
+	index = (endereco >> L2->offset_bits) & L2->index_operator;
 	grupo = index * L2->quantidade_vias;
+	tag = endereco >> (L2->offset_bits + L2->index_bits);
 
 	// Procura bloco referente ao endereço em L2
 	for( i = 0; i < L2->quantidade_vias; i++){
 		// Marca bloco como invalido.
-		if((L2->blocos[grupo + i].endereco == endereco)){
+		if((L2->blocos[grupo + i].tag == tag)){
 
 			L2->blocos[grupo + i].validade = 0;
 			break;
@@ -230,7 +277,7 @@ void cache::imprimeGrupo(uint32_t endereco){
 	uint32_t index, grupo;
 	uint32_t i;
 
-	index = (endereco >> BLOCK_BIT_SIZE) & this->index_operator;
+	index = (endereco >> this->offset_bits) & this->index_operator;
 	grupo = index * this->quantidade_vias;
 	
 	ORCS_PRINTF("%s->search:\n", this->nome);
@@ -238,7 +285,7 @@ void cache::imprimeGrupo(uint32_t endereco){
 	ORCS_PRINTF("index:   \t%" PRIu32 "\n", index);
 
 	for( i = 0; i < this->quantidade_vias; i++){
-		ORCS_PRINTF("endereco: %" PRIu32 " \t", this->blocos[grupo + i].endereco);	
+		ORCS_PRINTF("tag: %" PRIu32 " \t", this->blocos[grupo + i].tag);	
 		ORCS_PRINTF("time: %" PRIu64 " \t", this->blocos[grupo + i].time);
 		ORCS_PRINTF("validade: %d \t", this->blocos[grupo + i].validade);
 		ORCS_PRINTF("dirty: %d \n", this->blocos[grupo + i].dirty);
