@@ -89,7 +89,8 @@ class stride_prefetcher{
 		// de acordo com a politica indicada .
 		void train(uint32_t op_endereco, uint32_t mem_endereco);
 
-		// Função que verifica se existe entrata ATIVA referente a operação "op_endereco"
+		// Função que verifica se existe entrata ATIVA referente a operação "op_endereco". 
+		// Retornará valor da posição do elemento se encontrado, caso contrário retorna "quantidade_entradas".
 		int search(uint32_t op_endereco);
 
 		// Função que, de acordo com o endereco da operação atual + prefetcher.distance, 
