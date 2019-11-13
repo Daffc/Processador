@@ -41,7 +41,7 @@ void processor_t::clock() {
 		return;	
 	}
 
-	// if (!orcs_engine.trace_reader->trace_fetch(&new_instruction) || orcs_engine.trace_reader->fetch_instructions == 2000) {
+	// if (!orcs_engine.trace_reader->trace_fetch(&new_instruction) || orcs_engine.trace_reader->fetch_instructions == 2000000) {
 	if (!orcs_engine.trace_reader->trace_fetch(&new_instruction)) {
 		/// If EOF
 		ORCS_PRINTF("CLOCKS = %" PRIu64 "\n",orcs_engine.global_cycle);
@@ -55,7 +55,7 @@ void processor_t::clock() {
 	}
 	else{
 
-		// prefetcher.prefetch(new_instruction.opcode_address, L2);
+		prefetcher.prefetch(new_instruction.opcode_address, L2);
 		
 		if(new_instruction.is_read){
 			delay += read(new_instruction.opcode_address, new_instruction.read_address);
@@ -81,7 +81,7 @@ void processor_t::statistics() {
 	ORCS_PRINTF("miss_rate_L2:        \t%f\n", (miss_L2 * 1.0) / (total_acesso_L2 * 1.0));
 	ORCS_PRINTF("delay_extra:         \t%lu\n", delay_extra);
 	ORCS_PRINTF("contador_out_of_time:\t%lu\n", contador_out_of_time);
-	ORCS_PRINTF("realocations:     \t%lu\n", realocations);
+	ORCS_PRINTF("realocations:        \t%lu\n", realocations);
 	ORCS_PRINTF("######################################################\n");
 	ORCS_PRINTF("processor_t\n");
 
@@ -104,14 +104,13 @@ int processor_t::read(uint32_t op_endereco, uint32_t mem_endereco){
 		miss_L1 +=1;
 		total_acesso_L2 += 1;
 		delay += L2->latencia;
-
-		// this->prefetcher.train(op_endereco, mem_endereco);
 		
+		this->prefetcher.train(op_endereco, mem_endereco);
 		// Verifica se bloco está em cache e o atualiza, caso não esteja entra no if.
 		if(!L2->search(mem_endereco, &posicao_2)){
 
 			// Aloca entrada com "op_endereco" e com "mem_endereco"
-			// this->prefetcher.allocate(op_endereco, mem_endereco);
+			prefetcher.allocate(op_endereco, mem_endereco);
 
 			delay += DELAY_PRINC_MEM;
 			
@@ -122,16 +121,16 @@ int processor_t::read(uint32_t op_endereco, uint32_t mem_endereco){
 		else{
 			posicao_prefetcher = prefetcher.search(op_endereco);
 
+			// ORCS_PRINTF("posicao_2: %d\t", posicao_2);
+			// ORCS_PRINTF("ready_cycle: %" PRIu64 "\t", L2->blocos[posicao_2].ready_cycle);
+			// ORCS_PRINTF("global_cycle: %" PRId64 "\n", orcs_engine.global_cycle);
 			// Verifica endereço de instrução que está acessando a memória consta em prefetcher.	
 			if(posicao_prefetcher != prefetcher.quantidade_entradas){
 				ready_distance = L2->blocos[posicao_2].ready_cycle - orcs_engine.global_cycle;
-				ORCS_PRINTF("posicao_2: %d\t", posicao_2);
-				ORCS_PRINTF("ready_cycle: %" PRIu64 "\t", L2->blocos[posicao_2].ready_cycle);
-				ORCS_PRINTF("global_cycle: %" PRId64 "\n", orcs_engine.global_cycle);
 				if(ready_distance > 0){
 					delay += ready_distance;
+					delay_extra += ready_distance;
 					contador_out_of_time++;
-					ORCS_PRINTF("** ready_distance: %ld\n", ready_distance);
 				}
 			}
 
@@ -220,8 +219,6 @@ int cache::search(uint32_t endereco, uint32_t* melhor_posicao){
 			
 			//retorna posição de endereço procurado na cache.
 			*melhor_posicao = i;
-			if(this->blocos[grupo + i].prefetched)
-				this->imprimeGrupo(endereco);
 			return 1;
 		}
 		// Verifica se o bloco "selected" para substituição é um bloco válido. 
@@ -293,7 +290,7 @@ void cache::imprimeGrupo(uint32_t endereco){
 		ORCS_PRINTF("tag: %" PRIu32 " \t", this->blocos[grupo + i].tag);	
 		ORCS_PRINTF("time: %" PRIu64 " \t", this->blocos[grupo + i].time);
 		ORCS_PRINTF("validade: %d \t", this->blocos[grupo + i].validade);
-		ORCS_PRINTF("dirty: %d \n", this->blocos[grupo + i].dirty);
+		ORCS_PRINTF("dirty: %d \t", this->blocos[grupo + i].dirty);
 		ORCS_PRINTF("ready_cycle: %" PRIu64 " \t", this->blocos[grupo + i].ready_cycle);
 		ORCS_PRINTF("prefetched: %d \n", this->blocos[grupo + i].prefetched);
 	}
