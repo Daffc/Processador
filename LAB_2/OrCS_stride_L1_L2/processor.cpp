@@ -105,7 +105,6 @@ int processor_t::read(uint32_t op_endereco, uint32_t mem_endereco){
 		total_acesso_L2 += 1;
 		delay += L2->latencia;
 		
-		this->prefetcher.train(op_endereco, mem_endereco);
 		// Verifica se bloco está em cache e o atualiza, caso não esteja entra no if.
 		if(!L2->search(mem_endereco, &posicao_2)){
 
@@ -135,6 +134,8 @@ int processor_t::read(uint32_t op_endereco, uint32_t mem_endereco){
 			}
 
 		}
+
+		this->prefetcher.train(op_endereco, mem_endereco);
 
 		// Tras bloco para cache L1.
 		delay += L1->allocate(mem_endereco, posicao_1, &total_writeback, false);
