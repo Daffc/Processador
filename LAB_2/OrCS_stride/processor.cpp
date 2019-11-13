@@ -1,6 +1,6 @@
 #include "simulator.hpp"
 
-int contador_out_of_time = 0;
+unsigned long int delay_extra = 0, contador_out_of_time = 0, realocations = 0;
 
 // =====================================================================
 processor_t::processor_t() {
@@ -58,15 +58,12 @@ void processor_t::clock() {
 		// prefetcher.prefetch(new_instruction.opcode_address, L2);
 		
 		if(new_instruction.is_read){
-			// ORCS_PRINTF("READ\n");		
 			delay += read(new_instruction.opcode_address, new_instruction.read_address);
 		}
 		if(new_instruction.is_read2){
-			// ORCS_PRINTF("READ2\n");		
 			delay += read(new_instruction.opcode_address, new_instruction.read2_address);
 		}
 		if(new_instruction.is_write){
-			// ORCS_PRINTF("WRITE\n");			
 			delay += read(new_instruction.opcode_address, new_instruction.write_address);
 			write(new_instruction.write_address);
 		}
@@ -76,11 +73,15 @@ void processor_t::clock() {
 // =====================================================================
 void processor_t::statistics() {
 
-	ORCS_PRINTF("total_acesso_L1:\t%" PRIu32 "\n", total_acesso_L1);
-	ORCS_PRINTF("miss_L1:        \t%" PRIu32 "\n", miss_L1);
-	ORCS_PRINTF("total_acesso_L2:\t%" PRIu32 "\n", total_acesso_L2);
-	ORCS_PRINTF("miss_L2:        \t%" PRIu32 "\n", miss_L2);
-	ORCS_PRINTF("total_writeback:\t%" PRIu32 "\n", total_writeback);
+	ORCS_PRINTF("total_acesso_L1:     \t%" PRIu32 "\n", total_acesso_L1);
+	ORCS_PRINTF("miss_L1:             \t%" PRIu32 "\n", miss_L1);
+	ORCS_PRINTF("miss_rate_L1:        \t%f\n", (miss_L1 * 1.0) / (total_acesso_L1 * 1.0));
+	ORCS_PRINTF("total_acesso_L2:     \t%" PRIu32 "\n", total_acesso_L2);
+	ORCS_PRINTF("miss_L2:             \t%" PRIu32 "\n", miss_L2);
+	ORCS_PRINTF("miss_rate_L2:        \t%f\n", (miss_L2 * 1.0) / (total_acesso_L2 * 1.0));
+	ORCS_PRINTF("delay_extra:         \t%lu\n", delay_extra);
+	ORCS_PRINTF("contador_out_of_time:\t%lu\n", contador_out_of_time);
+	ORCS_PRINTF("realocations:     \t%lu\n", realocations);
 	ORCS_PRINTF("######################################################\n");
 	ORCS_PRINTF("processor_t\n");
 
@@ -112,7 +113,7 @@ int processor_t::read(uint32_t op_endereco, uint32_t mem_endereco){
 			// Aloca entrada com "op_endereco" e com "mem_endereco"
 			// this->prefetcher.allocate(op_endereco, mem_endereco);
 
-			// delay += DELAY_PRINC_MEM;
+			delay += DELAY_PRINC_MEM;
 			
 			miss_L2 += 1;
 			// Tras bloco para cache L2.
@@ -252,7 +253,6 @@ int cache::allocate(uint32_t endereco, uint32_t posicao, uint32_t *total_writeba
 	// aplicar delay de escrita em memória principal.
 	if(this->blocos[posicao].dirty){
 
-		delay = DELAY_PRINC_MEM;
 		*total_writeback = *total_writeback + 1;
 	}
 
@@ -408,11 +408,11 @@ void stride_prefetcher::prefetch(uint32_t op_endereco, cache * cache){
 
 	endereco_futuro = op_endereco + this->distance;
 
-		ORCS_PRINTF("\n\n");
-		ORCS_PRINTF("++++++++++ PREFETCH +++++++\n");
-		ORCS_PRINTF("op_endereco: %" PRIu32 "          \n", op_endereco);	
-		ORCS_PRINTF("CLOCKS = %" PRIu64 "\n",orcs_engine.global_cycle);
-		ORCS_PRINTF("endereco_futuro: %" PRIu32 " \n\n", endereco_futuro);
+		// ORCS_PRINTF("\n\n");
+		// ORCS_PRINTF("++++++++++ PREFETCH +++++++\n");
+		// ORCS_PRINTF("op_endereco: %" PRIu32 "          \n", op_endereco);	
+		// ORCS_PRINTF("CLOCKS = %" PRIu64 "\n",orcs_engine.global_cycle);
+		// ORCS_PRINTF("endereco_futuro: %" PRIu32 " \n\n", endereco_futuro);
 
 	// Verifica se endereço procurado se encontra em alguma das entradas.
 	for(entrada = 0; entrada < this->quantidade_entradas; entrada++){
@@ -426,13 +426,13 @@ void stride_prefetcher::prefetch(uint32_t op_endereco, cache * cache){
 
 		// Calcula endereco de memória que sofrerá prefetch.
 		endereco_mem = this->entradas[entrada].last_address + this->entradas[entrada].stride;
-		cache->imprimeGrupo(endereco_mem);
+		// cache->imprimeGrupo(endereco_mem);
 		// Verifica se valor já não se encontra na cache.
 		if(!cache->search( endereco_mem, &melhor_posicao)){
 			// Caso não esteja na cache, alocar e definir tempo em que os dados estarão prontos.
 			cache->allocate(endereco_mem, melhor_posicao, &dummy, true);
 		}
-		cache->imprimeGrupo(endereco_mem);
+		// cache->imprimeGrupo(endereco_mem);
 	}
 }
 
