@@ -1,0 +1,19 @@
+** ready_distance: 160
+** ready_distance: 175
+End of dynamic simulation trace
+CLOCKS = 622163074
+End of Simulation
+######################################################
+trace_reader_t
+fetch_instructions:	200001517
+total_acesso_L1:     	75112242
+miss_L1:             	1933145
+miss_rate_L1:        	0.025737
+total_acesso_L2:     	1933145
+miss_L2:             	1696582
+miss_rate_L2:        	0.877628
+delay_extra:         	335
+contador_out_of_time:	2
+realocations:        	0
+######################################################
+processor_t
