@@ -68,7 +68,7 @@ enum estados{
 };
 class entrada_stride{
 	public:
-		uint32_t 	tag;
+		uint64_t 	tag;
 		uint32_t 	last_address;
 		int32_t		stride;
 		estados		status;
@@ -85,19 +85,19 @@ class stride_prefetcher{
 		// Inicializa Dimenções e entradas do prefecher.
 		void initialize(unsigned char  size, unsigned char  distance, unsigned char  degree);
 		// Armazena endereço da instrução e da requisição em entrada de prefetcher.
-		void allocate(uint32_t op_endereco, uint32_t mem_endereco);
+		void allocate(uint64_t op_endereco, uint32_t mem_endereco);
 		// Recebe endereço de instrução "op_endereco" e endereço de memória "mem_endereco" 
 		// e atualiza (caso exista entrada para instrução "op_endereco") "status" do prefetcher 
 		// de acordo com a politica indicada .
-		void train(uint32_t op_endereco, uint32_t mem_endereco);
+		void train(uint64_t op_endereco, uint32_t mem_endereco);
 
 		// Função que verifica se existe entrata ATIVA referente a operação "op_endereco". 
 		// Retornará valor da posição do elemento se encontrado, caso contrário retorna "quantidade_entradas".
-		int search(uint32_t op_endereco);
+		int search(uint64_t op_endereco);
 
 		// Função que, de acordo com o endereco da operação atual + prefetcher.distance, 
 		// verificará e efetuará prefetch se necessário.
-		void prefetch(uint32_t op_endereco, cache * cache);
+		void prefetch(uint64_t op_endereco, cache * cache);
 		/*-------------------------------------------------*/
 		/*--------------------- DEBUG ---------------------*/
 		/*-------------------------------------------------*/
@@ -136,7 +136,7 @@ class processor_t {
 		
 
 		// Efetuará todo os processos relacionados a leitura do "endereço", retornando o delay gerado pelo processo.
-		int read(uint32_t op_endereco, uint32_t endereco_mem);
+		int read(uint64_t op_endereco, uint32_t endereco_mem);
 
 		// Efetuará todo os processos relacionados a escrita do "endereço" uma vez que este já esteja na L1 (após read).
 		void write(uint32_t endereco);

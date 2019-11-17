@@ -41,7 +41,7 @@ void processor_t::clock() {
 		return;	
 	}
 
-	// if (!orcs_engine.trace_reader->trace_fetch(&new_instruction) || orcs_engine.trace_reader->fetch_instructions == 2000000) {
+	// if (!orcs_engine.trace_reader->trace_fetch(&new_instruction) || orcs_engine.trace_reader->fetch_instructions == 5000) {
 	if (!orcs_engine.trace_reader->trace_fetch(&new_instruction)) {
 		/// If EOF
 		ORCS_PRINTF("CLOCKS = %" PRIu64 "\n",orcs_engine.global_cycle);
@@ -54,7 +54,7 @@ void processor_t::clock() {
 		free(L2);
 	}
 	else{
-
+		
 		prefetcher.prefetch(new_instruction.opcode_address, L2);
 		
 		if(new_instruction.is_read){
@@ -87,13 +87,9 @@ void processor_t::statistics() {
 
 };
 
-int processor_t::read(uint32_t op_endereco, uint32_t mem_endereco){
+int processor_t::read(uint64_t op_endereco, uint32_t mem_endereco){
 	uint32_t posicao_1, posicao_2 = 0, posicao_prefetcher;
 	long int delay, ready_distance;
-
-	// ORCS_PRINTF("Buscando:\t%" PRIu32 "\n\n", mem_endereco);
-	// L1->imprimeGrupo(mem_endereco);
-	// L2->imprimeGrupo(mem_endereco);
 
 	total_acesso_L1 += 1;
 	delay = L1->latencia;
@@ -103,8 +99,9 @@ int processor_t::read(uint32_t op_endereco, uint32_t mem_endereco){
 		
 		miss_L1 +=1;
 		total_acesso_L2 += 1;
-		delay += L2->latencia;
+		delay += L2->latencia;	
 		
+		this->prefetcher.train(op_endereco, mem_endereco);	
 		// Verifica se bloco está em cache e o atualiza, caso não esteja entra no if.
 		if(!L2->search(mem_endereco, &posicao_2)){
 
@@ -134,8 +131,6 @@ int processor_t::read(uint32_t op_endereco, uint32_t mem_endereco){
 			}
 
 		}
-
-		this->prefetcher.train(op_endereco, mem_endereco);
 
 		// Tras bloco para cache L1.
 		delay += L1->allocate(mem_endereco, posicao_1, &total_writeback, false);
@@ -312,7 +307,7 @@ void stride_prefetcher::initialize(unsigned char  quantidade_entradas, unsigned 
 	memset(this->entradas, 0, quantidade_entradas * sizeof(entrada_stride));	
 }
 
-void stride_prefetcher::allocate(uint32_t op_endereco, uint32_t mem_endereco){
+void stride_prefetcher::allocate(uint64_t op_endereco, uint32_t mem_endereco){
 	int entrada, selecionado;	
 
 	// Define Primeira entrada do prefetcher como candidata a substituição.
@@ -348,47 +343,42 @@ void stride_prefetcher::allocate(uint32_t op_endereco, uint32_t mem_endereco){
 	}
 }
 
-void stride_prefetcher::train(uint32_t op_endereco, uint32_t mem_endereco){
+void stride_prefetcher::train(uint64_t op_endereco, uint32_t mem_endereco){
 
 	int verdadeiro_stride, entrada;
 
 	// Verifica se endereço procurado se encontra em alguma das entradas.
 	for(entrada = 0; entrada < this->quantidade_entradas; entrada++){
-		// Caso endereço seja achado. Parar procura.
+		// Caso endereço seja achado.
 		if(this->entradas[entrada].tag == op_endereco){
-			break;
+			// Verifica se entrada é válida.
+			if(this->entradas[entrada].status != INVALIDO){
+				
+				verdadeiro_stride = mem_endereco - this->entradas[entrada].last_address; 
+				
+				// Verifica se "stride" armazenado é igual ao "verdadeiro_stride".
+				if(this->entradas[entrada].stride == verdadeiro_stride){
+					this->entradas[entrada].status = ATIVO;
+					this->entradas[entrada].last_address = mem_endereco;
+				}
+				// Caso "stride" não seja condizente.
+				else{
+					// Verifica se "status" é de treinamento. caso seja atualiza o "last_address" e "stride".
+					if(this->entradas[entrada].status  == TREINAMENTO){
+						this->entradas[entrada].last_address = mem_endereco;
+						this->entradas[entrada].stride = verdadeiro_stride;
+					}
+					// Caso "status" seja "ATIVO", torná-lo INVALIDO.
+					else{
+						this->entradas[entrada].status = INVALIDO;
+					}
+				}
+			}
 		}
 	}
-
-	// Caso entrada para "op_endereco" tenha sido encontrada
-	if(entrada != this->quantidade_entradas){
-		// Verifica se entrada é válida.
-		if(this->entradas[entrada].status != INVALIDO){
-			
-			verdadeiro_stride = mem_endereco - this->entradas[entrada].last_address; 
-			
-			// Verifica se "stride" armazenado é igual ao "verdadeiro_stride".
-			if(this->entradas[entrada].stride == verdadeiro_stride){
-				this->entradas[entrada].status = ATIVO;
-				this->entradas[entrada].last_address = mem_endereco;
-			}
-			// Caso "stride" não seja condizente.
-			else{
-				// Verifica se "status" é de treinamento. caso seja atualiza o "last_address" e "stride".
-				if(this->entradas[entrada].status  == TREINAMENTO){
-					this->entradas[entrada].last_address = mem_endereco;
-					this->entradas[entrada].stride = verdadeiro_stride;
-				}
-				// Caso "status" seja "ATIVO", torná-lo INVALIDO.
-				else{
-					this->entradas[entrada].status = INVALIDO;
-				}
-			}
-		}
-	}	
 }
 
-int stride_prefetcher::search(uint32_t op_endereco){
+int stride_prefetcher::search(uint64_t op_endereco){
 	uint32_t entrada;
 
 	// Verifica se endereço procurado se encontra em alguma das entradas.
@@ -401,34 +391,24 @@ int stride_prefetcher::search(uint32_t op_endereco){
 	return entrada;
 }
 
-void stride_prefetcher::prefetch(uint32_t op_endereco, cache * cache){
+void stride_prefetcher::prefetch(uint64_t op_endereco, cache * cache){
 	uint32_t entrada, melhor_posicao, dummy, endereco_mem;
-
-		// ORCS_PRINTF("\n\n");
-		// ORCS_PRINTF("++++++++++ PREFETCH +++++++\n");
-		// ORCS_PRINTF("op_endereco: %" PRIu32 "          \n", op_endereco);	
-		// ORCS_PRINTF("CLOCKS = %" PRIu64 "\n",orcs_engine.global_cycle);
-		// ORCS_PRINTF("endereco_futuro: %" PRIu32 " \n\n", endereco_futuro);
 
 	// Verifica se endereço procurado se encontra em alguma das entradas.
 	for(entrada = 0; entrada < this->quantidade_entradas; entrada++){
 		// Caso endereço seja achado em uma entrada válida. Parar de procura.
-		if(((this->entradas[entrada].tag <= op_endereco + this->distance) && (this->entradas[entrada].tag >= op_endereco - this->distance)) && this->entradas[entrada].status == ATIVO){
-			break;
+		if(((op_endereco <= this->entradas[entrada].tag + this->distance) && ( op_endereco >= this->entradas[entrada].tag- this->distance)) && this->entradas[entrada].status == ATIVO){
+		
+			// Calcula endereco de memória que sofrerá prefetch.
+			endereco_mem = this->entradas[entrada].last_address + this->entradas[entrada].stride;
+			// cache->imprimeGrupo(endereco_mem);
+			// Verifica se valor já não se encontra na cache.
+			if(!cache->search( endereco_mem, &melhor_posicao)){
+				// Caso não esteja na cache, alocar e definir tempo em que os dados estarão prontos.
+				cache->allocate(endereco_mem, melhor_posicao, &dummy, true);
+				// cache->imprimeGrupo(endereco_mem);
+			}
 		}
-	}
-	// Caso entrada de "status" "ATIVO" tenha sido encontrada para "endereco_futuro"
-	if(entrada != this->quantidade_entradas){
-
-		// Calcula endereco de memória que sofrerá prefetch.
-		endereco_mem = this->entradas[entrada].last_address + this->entradas[entrada].stride;
-		// cache->imprimeGrupo(endereco_mem);
-		// Verifica se valor já não se encontra na cache.
-		if(!cache->search( endereco_mem, &melhor_posicao)){
-			// Caso não esteja na cache, alocar e definir tempo em que os dados estarão prontos.
-			cache->allocate(endereco_mem, melhor_posicao, &dummy, true);
-		}
-		// cache->imprimeGrupo(endereco_mem);
 	}
 }
 
@@ -442,7 +422,7 @@ void stride_prefetcher::imprime(uint32_t endereco){
 	ORCS_PRINTF("endereco:\t%" PRIu32 "\n", endereco);
 
 	for(entrada = 0; entrada < this->quantidade_entradas; entrada++){
-		ORCS_PRINTF("tag: %" PRIu32 "          \t", this->entradas[entrada].tag);	
+		ORCS_PRINTF("tag: %" PRIu64 "          \t", this->entradas[entrada].tag);	
 		ORCS_PRINTF("last_address: %" PRIu32 " \t", this->entradas[entrada].last_address);
 		ORCS_PRINTF("stride: %" PRId32 "       \t", this->entradas[entrada].stride);
 		ORCS_PRINTF("status: %d                \n", this->entradas[entrada].status);
