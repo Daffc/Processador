@@ -402,9 +402,7 @@ int stride_prefetcher::search(uint32_t op_endereco){
 }
 
 void stride_prefetcher::prefetch(uint32_t op_endereco, cache * cache){
-	uint32_t entrada, melhor_posicao, endereco_futuro, dummy, endereco_mem;
-
-	endereco_futuro = op_endereco + this->distance;
+	uint32_t entrada, melhor_posicao, dummy, endereco_mem;
 
 		// ORCS_PRINTF("\n\n");
 		// ORCS_PRINTF("++++++++++ PREFETCH +++++++\n");
@@ -415,7 +413,7 @@ void stride_prefetcher::prefetch(uint32_t op_endereco, cache * cache){
 	// Verifica se endereço procurado se encontra em alguma das entradas.
 	for(entrada = 0; entrada < this->quantidade_entradas; entrada++){
 		// Caso endereço seja achado em uma entrada válida. Parar de procura.
-		if(this->entradas[entrada].tag == endereco_futuro && this->entradas[entrada].status == ATIVO){
+		if(((this->entradas[entrada].tag <= op_endereco + this->distance) && (this->entradas[entrada].tag >= op_endereco - this->distance)) && this->entradas[entrada].status == ATIVO){
 			break;
 		}
 	}
