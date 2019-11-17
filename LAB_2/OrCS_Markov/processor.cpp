@@ -21,16 +21,16 @@ processor_t::processor_t() {
 	total_acesso_L2 = 0;
 	total_writeback = 0;
 
-	prefetcher.initialize(16, 2);
-	orcs_engine.global_cycle +=1;
-	prefetcher.allocate(20);
-	orcs_engine.global_cycle +=1;
-	prefetcher.allocate(30);
-	orcs_engine.global_cycle +=1;
-	prefetcher.allocate(20);
-	orcs_engine.global_cycle +=1;
-	prefetcher.allocate(40);
-	orcs_engine.global_cycle +=1;
+	prefetcher.initialize(16, 3);
+
+	int coisa[] = {20,40,40,40,40,20,30, 50, 30, 90, 60};
+
+	for(int i = 0; i < 10; i++){
+		orcs_engine.global_cycle += 1;
+		prefetcher.train(coisa[i]);
+		prefetcher.allocate(coisa[i]);
+		prefetcher.endereco_anterior = coisa[i];
+	}
 
 	prefetcher.imprime();
 };
@@ -282,7 +282,8 @@ void markov_prefetcher::initialize(unsigned char  quantidade_entradas, unsigned 
 		this->entradas[entrada].grupo = (proximo *) malloc( tamanho_grupo * sizeof(proximo));
 		memset(this->entradas[entrada].grupo, 0, tamanho_grupo * sizeof(proximo));
 	}
-		
+
+	this->endereco_anterior = 0;
 }
 
 void markov_prefetcher::allocate(uint32_t mem_endereco){
@@ -309,11 +310,67 @@ void markov_prefetcher::allocate(uint32_t mem_endereco){
 		for(proximo = 0; proximo < this->tamanho_grupo; proximo++){
 			this->entradas[selecionado].grupo[proximo].endereco = 0;
 			this->entradas[selecionado].grupo[proximo].counter = 0;
-		}
-		this->entradas[selecionado].time = orcs_engine.global_cycle;
+		}			
 	}
+	this->entradas[selecionado].time = orcs_engine.global_cycle;
 }
 
+void markov_prefetcher::train(uint32_t proximo_endereco){
+
+	int entrada, proximo, selecionado = 0;
+
+	ORCS_PRINTF("treinamento: %" PRIu32 "\n", proximo_endereco);	
+
+	for(entrada = 0; entrada < this->quantidade_entradas; entrada++){
+		// Caso endereço seja achado em uma entrada válida. Parar de procura.
+		if(this->entradas[entrada].tag == this->endereco_anterior){
+			break;
+		}
+	}
+	
+	ORCS_PRINTF("entrada: %d\t", entrada);	
+
+	for(proximo = 0; proximo < this->tamanho_grupo; proximo++){
+		// Caso proximo_endereco conste em algum elemento do grupo.
+		if(this->entradas[entrada].grupo[proximo].endereco == proximo_endereco){	
+			break;
+		}
+		// Seleciona a entrada do grupo que possui menor probabilidade de sofrer prefetch.
+		if(this->entradas[entrada].grupo[selecionado].counter > this->entradas[entrada].grupo[proximo].counter){
+			selecionado = proximo;
+		}
+	}
+
+	ORCS_PRINTF("selecionado: %d\n\n", selecionado);	
+
+	// Caso não conste, substituir elemento do grupo "menos provavel"
+	if(proximo == this->tamanho_grupo){
+		this->entradas[entrada].grupo[selecionado].endereco = proximo_endereco;
+		this->entradas[entrada].grupo[selecionado].counter = 0;
+	}
+	else{
+		// Ajusta selecionado para caso entrada de "ultimo_endereco" tenha sido encontrada.
+		selecionado = proximo;
+	}
+
+	for(proximo = 0; proximo < this->tamanho_grupo; proximo++){
+		// Se entrada possui o proximo, incrementar em 1.
+		if(proximo == selecionado){
+			this->entradas[entrada].grupo[proximo].counter += 1;
+		}
+		// Caso contreário decrementar.
+		else{
+			this->entradas[entrada].grupo[proximo].counter -= 1;
+		}
+
+		if(this->entradas[entrada].grupo[proximo].counter > 3){
+			this->entradas[entrada].grupo[proximo].counter = 3;
+		}
+		if(this->entradas[entrada].grupo[proximo].counter < 0){
+			this->entradas[entrada].grupo[proximo].counter = 0;
+		}
+	}	
+}
 
 
 

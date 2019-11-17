@@ -57,7 +57,7 @@ class cache{
 class proximo{
 	public:
 		uint32_t 		endereco;
-		unsigned char	counter;
+		char			counter;
 };
 class entrada_markov{
 	public:
@@ -71,6 +71,7 @@ class markov_prefetcher{
 		entrada_markov 	*entradas;
 		unsigned char	quantidade_entradas;
 		unsigned char 	tamanho_grupo;
+		uint32_t		endereco_anterior;
 
 		
 		// Inicializa Dimenções e entradas do prefecher.
@@ -80,7 +81,7 @@ class markov_prefetcher{
 		// // Recebe endereço de instrução "op_endereco" e endereço de memória "mem_endereco" 
 		// // e atualiza (caso exista entrada para instrução "op_endereco") "status" do prefetcher 
 		// // de acordo com a politica indicada .
-		// void train(uint64_t op_endereco, uint32_t mem_endereco);
+		void train(uint32_t proximo_endereco);
 
 		// // Função que verifica se existe entrata ATIVA referente a operação "op_endereco". 
 		// // Retornará valor da posição do elemento se encontrado, caso contrário retorna "quantidade_entradas".
