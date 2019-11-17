@@ -63,6 +63,7 @@ class entrada_markov{
 	public:
 		uint32_t 	tag;
 		proximo 	*grupo;
+		uint64_t	time;
 };
 
 class markov_prefetcher{
@@ -75,7 +76,7 @@ class markov_prefetcher{
 		// Inicializa Dimenções e entradas do prefecher.
 		void initialize(unsigned char  quantidade_entradas, unsigned char  tamanho_grupo);
 		// // Armazena endereço da instrução e da requisição em entrada de prefetcher.
-		// void allocate(uint64_t op_endereco, uint32_t mem_endereco);
+		void allocate(uint32_t mem_endereco);
 		// // Recebe endereço de instrução "op_endereco" e endereço de memória "mem_endereco" 
 		// // e atualiza (caso exista entrada para instrução "op_endereco") "status" do prefetcher 
 		// // de acordo com a politica indicada .

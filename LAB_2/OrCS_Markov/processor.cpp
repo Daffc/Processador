@@ -22,6 +22,16 @@ processor_t::processor_t() {
 	total_writeback = 0;
 
 	prefetcher.initialize(16, 2);
+	orcs_engine.global_cycle +=1;
+	prefetcher.allocate(20);
+	orcs_engine.global_cycle +=1;
+	prefetcher.allocate(30);
+	orcs_engine.global_cycle +=1;
+	prefetcher.allocate(20);
+	orcs_engine.global_cycle +=1;
+	prefetcher.allocate(40);
+	orcs_engine.global_cycle +=1;
+
 	prefetcher.imprime();
 };
 
@@ -45,12 +55,6 @@ void processor_t::clock() {
 		/// If EOF
 		ORCS_PRINTF("CLOCKS = %" PRIu64 "\n",orcs_engine.global_cycle);
 		orcs_engine.simulator_alive = false;
-
-		L1->free_cache();
-		L2->free_cache();
-
-		free(L1);
-		free(L2);
 	}
 	else{
 		if(new_instruction.is_read){
@@ -281,6 +285,35 @@ void markov_prefetcher::initialize(unsigned char  quantidade_entradas, unsigned 
 		
 }
 
+void markov_prefetcher::allocate(uint32_t mem_endereco){
+	int entrada, selecionado, proximo;	
+
+	// Define Primeira entrada do prefetcher como candidata a substituição.
+	selecionado = 0;
+
+	// Verifica se endereço procurado se encontra em alguma das entradas.
+	for(entrada = 0; entrada < this->quantidade_entradas; entrada++){
+		// Caso endereço seja achado em uma entrada válida. Parar de procura.
+		if(this->entradas[entrada].tag == mem_endereco){
+			break;
+		}
+		// Verifica se entrada "selecionado" não é "INVALIDO".
+		if(this->entradas[selecionado].time > this->entradas[entrada].time ){
+			selecionado = entrada;
+		}
+	}
+	
+	// Caso "op_endereco" não tenha sido encontrado em nenhuma das entradas. substituir entrada "selecionado" por nova entrada.
+	if(entrada == this->quantidade_entradas){
+		this->entradas[selecionado].tag = mem_endereco;
+		for(proximo = 0; proximo < this->tamanho_grupo; proximo++){
+			this->entradas[selecionado].grupo[proximo].endereco = 0;
+			this->entradas[selecionado].grupo[proximo].counter = 0;
+		}
+		this->entradas[selecionado].time = orcs_engine.global_cycle;
+	}
+}
+
 
 
 
@@ -299,10 +332,10 @@ void markov_prefetcher::imprime(){
 		ORCS_PRINTF("tag: %" PRIu32 "\t", this->entradas[entrada].tag);	
 		
 		for(grupo = 0; grupo < this->tamanho_grupo; grupo++){
-			ORCS_PRINTF("next: %" PRIu32 "\t", 	this->entradas[entrada].grupo[grupo].endereco);
+			ORCS_PRINTF("next: %" PRIu32 " \t", 	this->entradas[entrada].grupo[grupo].endereco);
 			ORCS_PRINTF("counter: %d \t", 	this->entradas[entrada].grupo[grupo].counter);
 		}
-		ORCS_PRINTF("\n");
+		ORCS_PRINTF("time: %" PRIu64 "\n", this->entradas[entrada].time);
 	}
 	// ORCS_PRINTF("------------------------------\n\n");
 }
