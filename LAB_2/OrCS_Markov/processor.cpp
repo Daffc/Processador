@@ -1,6 +1,9 @@
 #include "simulator.hpp"
 
 // =====================================================================
+
+markov_prefetcher prefetcher;
+
 processor_t::processor_t() {
 
 	//definindo delay inicial.
@@ -21,7 +24,7 @@ processor_t::processor_t() {
 	total_acesso_L2 = 0;
 	total_writeback = 0;
 
-	prefetcher.initialize(16, 3);
+	prefetcher.initialize(16, 3, 8);
 
 	int coisa[] = {20,40,40,40,40,20,30, 50, 30, 90, 60};
 
@@ -32,7 +35,8 @@ processor_t::processor_t() {
 		prefetcher.endereco_anterior = coisa[i];
 	}
 
-	prefetcher.imprime();
+	prefetcher.imprimeTabela();
+	prefetcher.imprimeBuffer();
 };
 
 // =====================================================================
@@ -41,7 +45,7 @@ void processor_t::allocate() {
 
 // =====================================================================
 void processor_t::clock() {
-
+ 
 	/// Get the next instruction from the trace
 	opcode_package_t new_instruction;
 
@@ -268,22 +272,29 @@ void cache::imprimeGrupo(uint32_t endereco){
 /***********************************************/
 /************* METODOS PREFETCHER **************/
 /***********************************************/
-void markov_prefetcher::initialize(unsigned char  quantidade_entradas, unsigned char  tamanho_grupo){
+void markov_prefetcher::initialize(unsigned char  quantidade_entradas, unsigned char  tamanho_grupo, unsigned int tamanho_buffer){
 
 	int entrada;
 
 	this->quantidade_entradas = quantidade_entradas;
 	this->tamanho_grupo = tamanho_grupo;
 
+	// Definindo tamanho da tabela de predição para markov.
 	this->entradas = (entrada_markov *) malloc( quantidade_entradas * sizeof(entrada_markov));
 	memset(this->entradas, 0, quantidade_entradas * sizeof(entrada_markov));
 
+	// Allocando e zerando cara elemento de cada entrada da tabela de markov.
 	for(entrada = 0; entrada < this->quantidade_entradas; entrada++){
 		this->entradas[entrada].grupo = (proximo *) malloc( tamanho_grupo * sizeof(proximo));
 		memset(this->entradas[entrada].grupo, 0, tamanho_grupo * sizeof(proximo));
 	}
-
 	this->endereco_anterior = 0;
+
+	// Adiquirindo metricas do buffer que armazenará as prediçoes.
+	this->tamanho_buffer = tamanho_buffer;
+	this->buffer_prefetch = (entrada_buffer *) malloc( tamanho_buffer * sizeof(entrada_buffer));
+	memset(this->buffer_prefetch, 0, tamanho_buffer * sizeof(entrada_buffer));
+	this->cabeca_buffer = 0;
 }
 
 void markov_prefetcher::allocate(uint32_t mem_endereco){
@@ -322,7 +333,7 @@ void markov_prefetcher::train(uint32_t proximo_endereco){
 	ORCS_PRINTF("treinamento: %" PRIu32 "\n", proximo_endereco);	
 
 	for(entrada = 0; entrada < this->quantidade_entradas; entrada++){
-		// Caso endereço seja achado em uma entrada válida. Parar de procura.
+		// Caso endereço seja achado em uma entrada válida. Parar de procura.uint32_t 	endereco;
 		if(this->entradas[entrada].tag == this->endereco_anterior){
 			break;
 		}
@@ -381,7 +392,7 @@ void markov_prefetcher::train(uint32_t proximo_endereco){
 /*-------------------------------------------------*/
 /*--------------------- DEBUG ---------------------*/
 /*-------------------------------------------------*/
-void markov_prefetcher::imprime(){
+void markov_prefetcher::imprimeTabela(){
 
 	uint32_t entrada, grupo;
 
@@ -394,5 +405,14 @@ void markov_prefetcher::imprime(){
 		}
 		ORCS_PRINTF("time: %" PRIu64 "\n", this->entradas[entrada].time);
 	}
-	// ORCS_PRINTF("------------------------------\n\n");
+}
+
+void markov_prefetcher::imprimeBuffer(){
+
+	uint32_t entrada;
+
+	for(entrada = 0; entrada < this->tamanho_buffer; entrada++){	
+		ORCS_PRINTF("next: %" PRIu32 " \t",this->buffer_prefetch[entrada].endereco);
+		ORCS_PRINTF("counter: %" PRIu64 "\n", 	this->buffer_prefetch[entrada].ready_cycle);
+	}
 }

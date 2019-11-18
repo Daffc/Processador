@@ -54,6 +54,11 @@ class cache{
 /******** ELEMENTOS DO PREFETCHER **************/
 /***********************************************/
 
+class entrada_buffer{
+	public:
+		uint32_t 	endereco;
+		uint64_t 	ready_cycle;
+};
 class proximo{
 	public:
 		uint32_t 		endereco;
@@ -69,13 +74,16 @@ class entrada_markov{
 class markov_prefetcher{
 	public:
 		entrada_markov 	*entradas;
+		entrada_buffer	*buffer_prefetch;
 		unsigned char	quantidade_entradas;
 		unsigned char 	tamanho_grupo;
+		unsigned int    tamanho_buffer;
+		unsigned int    cabeca_buffer;
 		uint32_t		endereco_anterior;
 
 		
 		// Inicializa Dimenções e entradas do prefecher.
-		void initialize(unsigned char  quantidade_entradas, unsigned char  tamanho_grupo);
+		void initialize(unsigned char  quantidade_entradas, unsigned char  tamanho_grupo, unsigned int tamanho_buffer);
 		// // Armazena endereço da instrução e da requisição em entrada de prefetcher.
 		void allocate(uint32_t mem_endereco);
 		// // Recebe endereço de instrução "op_endereco" e endereço de memória "mem_endereco" 
@@ -94,8 +102,11 @@ class markov_prefetcher{
 		// /*--------------------- DEBUG ---------------------*/
 		// /*-------------------------------------------------*/
 
-		// // Imprime todas as entradas do prefetcher e o endereço informado.
-		void imprime();
+		// Imprime todas as entradas do prefetcher e o endereço informado.
+		void imprimeTabela();
+
+		// Imprime todas as entradas do buffer de armazenamento de predições.
+		void imprimeBuffer();
 		
 };
 // ============================================================================
@@ -112,8 +123,6 @@ class processor_t {
 		unsigned int delay;
 		cache	*L1;
 		cache	*L2;
-
-		markov_prefetcher prefetcher;
 
 		uint32_t miss_L1;
 		uint32_t miss_L2;
