@@ -29,6 +29,8 @@ processor_t::processor_t() {
 	int coisa[] = {1025544,1245217,1025544,1245217,2510222,1025544,2510222, 1245217, 2510222, 1245217, 2510222};
 	int tag;
 	int shift_bits = L2->offset_bits + L2->index_bits;
+	unsigned int recebe_delay;
+	int teste_delay = 1;
 
 	for(int i = 0; i < 10; i++){
 		orcs_engine.global_cycle += 1;
@@ -43,9 +45,20 @@ processor_t::processor_t() {
 	prefetcher.imprimeBuffer();
 	
 	orcs_engine.global_cycle += 1;
-	prefetcher.prefetch(1025544, shift_bits, delay);
-	prefetcher.prefetch(1245217, shift_bits, delay);
-	prefetcher.prefetch(2510222, shift_bits, delay);
+	ORCS_PRINTF("\nBusca %d \n",prefetcher.buscaNoBuffer(2510222,shift_bits, &recebe_delay));
+	ORCS_PRINTF("DELAY %d \n",recebe_delay);
+	orcs_engine.global_cycle += 1;
+	prefetcher.prefetch(1025544, shift_bits, teste_delay);
+	ORCS_PRINTF("\nBusca %d \n",prefetcher.buscaNoBuffer(2510222,shift_bits, &recebe_delay));
+	ORCS_PRINTF("DELAY %d \n",recebe_delay);
+	orcs_engine.global_cycle += 1;
+	prefetcher.prefetch(1245217, shift_bits, teste_delay);
+	ORCS_PRINTF("\nBusca %d \n",prefetcher.buscaNoBuffer(2510222,shift_bits, &recebe_delay));
+	ORCS_PRINTF("DELAY %d \n",recebe_delay);
+	orcs_engine.global_cycle += 1;
+	prefetcher.prefetch(2510222, shift_bits, teste_delay);
+	ORCS_PRINTF("\nBusca %d \n",prefetcher.buscaNoBuffer(2510222,shift_bits, &recebe_delay));
+	ORCS_PRINTF("DELAY %d \n",recebe_delay);
 	prefetcher.imprimeTabela();
 	prefetcher.imprimeBuffer();
 };
@@ -118,7 +131,10 @@ int processor_t::read(uint32_t endereco){
 		total_acesso_L2 += 1;
 		delay += L2->latencia;
 		// Verifica se bloco está em cache e o atualiza, caso não esteja entra no if.
-		if(!L2->search(endereco, &posicao_2)){			// delay += DELAY_PRINC_MEM;
+		if(!L2->search(endereco, &posicao_2)){			
+			
+			
+			// delay += DELAY_PRINC_MEM;
 
 			miss_L2 += 1;
 			// Tras bloco para cache L2.
@@ -456,7 +472,42 @@ void markov_prefetcher::insereNoBuffer(uint32_t tag, unsigned int delay){
 	}
 }
 
+int markov_prefetcher::buscaNoBuffer(uint32_t mem_endereco,unsigned int shift_bits, unsigned int *delay){
 
+	
+	unsigned  int entrada, tag;	
+	long int 	diferenca;
+
+	// Registra tag do endereço de memória (correspondente ao bloco).
+	tag = mem_endereco >> shift_bits;
+
+	*delay = 0;
+	
+	// Verifica se já existe entrada que armazena bloco "tag" em buffer
+	for(entrada = 0; entrada < this->tamanho_buffer; entrada++){
+		if(this->buffer_prefetch[entrada].endereco == tag){
+			break;
+		}
+	}
+
+	// Caso exista entrada armazenando o endereço anterior.
+	if(entrada != this->tamanho_buffer){
+
+		// Verifica qual a diferença entre o ciclo atual e o ciclo em que o bloco estará em buffer.
+		diferenca = this->buffer_prefetch[entrada].ready_cycle - orcs_engine.global_cycle;
+
+		// Caso diferença seja positiva, retornar como delay (mais rápido que pedir a cache inferior).
+		if(diferenca > 0)
+			*delay = diferenca;
+
+		// Retorna que bloco foi encontrado.
+		return 1;
+	}
+	else{
+		// Retorna que bloco não foi encontrado.
+		return 0;
+	}
+}
 
 
 
