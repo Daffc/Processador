@@ -26,13 +26,15 @@ processor_t::processor_t() {
 
 	prefetcher.initialize(16, 3, 8);
 
-	int coisa[] = {20,40,40,40,40,20,30, 50, 30, 90, 60};
+	int coisa[] = {1025544,40,1025544,40,2510222,1025544,2510222, 50, 2510222, 90, 2510222}, tag, shift_bits = L2->offset_bits + L2->index_bits;
 
 	for(int i = 0; i < 10; i++){
 		orcs_engine.global_cycle += 1;
-		prefetcher.train(coisa[i]);
-		prefetcher.allocate(coisa[i]);
-		prefetcher.endereco_anterior = coisa[i];
+		prefetcher.train(coisa[i], shift_bits);
+		prefetcher.allocate(coisa[i], shift_bits);
+
+		tag = coisa[i] >> shift_bits;
+		prefetcher.endereco_anterior = tag;
 	}
 
 	prefetcher.imprimeTabela();
@@ -297,16 +299,17 @@ void markov_prefetcher::initialize(unsigned char  quantidade_entradas, unsigned 
 	this->cabeca_buffer = 0;
 }
 
-void markov_prefetcher::allocate(uint32_t mem_endereco){
-	int entrada, selecionado, proximo;	
+void markov_prefetcher::allocate(uint32_t mem_endereco, unsigned int shift_bits){
+	unsigned entrada, selecionado, proximo, tag;	
 
+	tag = mem_endereco >> shift_bits;
 	// Define Primeira entrada do prefetcher como candidata a substituição.
 	selecionado = 0;
 
 	// Verifica se endereço procurado se encontra em alguma das entradas.
 	for(entrada = 0; entrada < this->quantidade_entradas; entrada++){
 		// Caso endereço seja achado em uma entrada válida. Parar de procura.
-		if(this->entradas[entrada].tag == mem_endereco){
+		if(this->entradas[entrada].tag == tag){
 			break;
 		}
 		// Verifica se entrada "selecionado" não é "INVALIDO".
@@ -317,7 +320,7 @@ void markov_prefetcher::allocate(uint32_t mem_endereco){
 	
 	// Caso "op_endereco" não tenha sido encontrado em nenhuma das entradas. substituir entrada "selecionado" por nova entrada.
 	if(entrada == this->quantidade_entradas){
-		this->entradas[selecionado].tag = mem_endereco;
+		this->entradas[selecionado].tag = tag;
 		for(proximo = 0; proximo < this->tamanho_grupo; proximo++){
 			this->entradas[selecionado].grupo[proximo].endereco = 0;
 			this->entradas[selecionado].grupo[proximo].counter = 0;
@@ -326,9 +329,11 @@ void markov_prefetcher::allocate(uint32_t mem_endereco){
 	this->entradas[selecionado].time = orcs_engine.global_cycle;
 }
 
-void markov_prefetcher::train(uint32_t proximo_endereco){
+void markov_prefetcher::train(uint32_t proximo_endereco, unsigned int shift_bits){
 
-	int entrada, proximo, selecionado = 0;
+	unsigned  int entrada, proximo, selecionado = 0, tag;	
+
+	tag = proximo_endereco >> shift_bits;
 
 	ORCS_PRINTF("treinamento: %" PRIu32 "\n", proximo_endereco);	
 
@@ -343,7 +348,7 @@ void markov_prefetcher::train(uint32_t proximo_endereco){
 
 	for(proximo = 0; proximo < this->tamanho_grupo; proximo++){
 		// Caso proximo_endereco conste em algum elemento do grupo.
-		if(this->entradas[entrada].grupo[proximo].endereco == proximo_endereco){	
+		if(this->entradas[entrada].grupo[proximo].endereco == tag){	
 			break;
 		}
 		// Seleciona a entrada do grupo que possui menor probabilidade de sofrer prefetch.
@@ -356,7 +361,7 @@ void markov_prefetcher::train(uint32_t proximo_endereco){
 
 	// Caso não conste, substituir elemento do grupo "menos provavel"
 	if(proximo == this->tamanho_grupo){
-		this->entradas[entrada].grupo[selecionado].endereco = proximo_endereco;
+		this->entradas[entrada].grupo[selecionado].endereco = tag;
 		this->entradas[entrada].grupo[selecionado].counter = 0;
 	}
 	else{

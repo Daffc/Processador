@@ -85,11 +85,11 @@ class markov_prefetcher{
 		// Inicializa Dimenções e entradas do prefecher.
 		void initialize(unsigned char  quantidade_entradas, unsigned char  tamanho_grupo, unsigned int tamanho_buffer);
 		// // Armazena endereço da instrução e da requisição em entrada de prefetcher.
-		void allocate(uint32_t mem_endereco);
+		void allocate(uint32_t mem_endereco, unsigned int shift_bits);
 		// // Recebe endereço de instrução "op_endereco" e endereço de memória "mem_endereco" 
 		// // e atualiza (caso exista entrada para instrução "op_endereco") "status" do prefetcher 
 		// // de acordo com a politica indicada .
-		void train(uint32_t proximo_endereco);
+		void train(uint32_t proximo_endereco, unsigned int shift_bits);
 
 		// // Função que verifica se existe entrata ATIVA referente a operação "op_endereco". 
 		// // Retornará valor da posição do elemento se encontrado, caso contrário retorna "quantidade_entradas".
@@ -97,7 +97,7 @@ class markov_prefetcher{
 
 		// // Função que, de acordo com o endereco da operação atual + prefetcher.distance, 
 		// // verificará e efetuará prefetch se necessário.
-		// void prefetch(uint64_t op_endereco, cache * cache);
+		void prefetch(uint32_t mem_endereco, cache * cache);
 		// /*-------------------------------------------------*/
 		// /*--------------------- DEBUG ---------------------*/
 		// /*-------------------------------------------------*/
