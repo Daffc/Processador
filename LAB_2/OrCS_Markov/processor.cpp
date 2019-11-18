@@ -26,52 +26,27 @@ processor_t::processor_t() {
 
 	prefetcher.initialize(16, 3, 8);
 
-	// int coisa[] = {1025544,40,1025544,40,2510222,1025544,2510222, 50, 2510222, 90, 2510222};
-	// int tag;
-	// int shift_bits = L2->offset_bits + L2->index_bits;
+	int coisa[] = {1025544,1245217,1025544,1245217,2510222,1025544,2510222, 1245217, 2510222, 1245217, 2510222};
+	int tag;
+	int shift_bits = L2->offset_bits + L2->index_bits;
 
-	// for(int i = 0; i < 10; i++){
-	// 	orcs_engine.global_cycle += 1;
-	// 	prefetcher.train(coisa[i], shift_bits);
-	// 	prefetcher.allocate(coisa[i], shift_bits);
+	for(int i = 0; i < 10; i++){
+		orcs_engine.global_cycle += 1;
+		prefetcher.train(coisa[i], shift_bits);
+		prefetcher.allocate(coisa[i], shift_bits);
 
-	// 	tag = coisa[i] >> shift_bits;
-	// 	prefetcher.endereco_anterior = tag;
-	// }
+		tag = coisa[i] >> shift_bits;
+		prefetcher.endereco_anterior = tag;
+	}
 
-	// for(int i = 0; i < 10; i++){
-	// 	orcs_engine.global_cycle += 1;
-	// 	prefetcher.train(coisa[i], shift_bits);
-	// 	prefetcher.allocate(coisa[i], shift_bits);
-
-	// 	tag = coisa[i] >> shift_bits;
-	// 	prefetcher.endereco_anterior = tag;
-	// }
-
-	// prefetcher.imprimeTabela();
-
+	prefetcher.imprimeTabela();
+	prefetcher.imprimeBuffer();
+	
 	orcs_engine.global_cycle += 1;
-	prefetcher.insereNoBuffer(20, 50);
-	orcs_engine.global_cycle += 1;
-	prefetcher.insereNoBuffer(30, 50);
-	orcs_engine.global_cycle += 1;
-	prefetcher.insereNoBuffer(20, 50);
-	orcs_engine.global_cycle += 1;
-	prefetcher.insereNoBuffer(40, 50);
-	orcs_engine.global_cycle += 1;
-	prefetcher.insereNoBuffer(50, 50);
-	orcs_engine.global_cycle += 1;
-	prefetcher.insereNoBuffer(60, 50);
-	orcs_engine.global_cycle += 1;
-	prefetcher.insereNoBuffer(70, 50);
-	orcs_engine.global_cycle += 1;
-	prefetcher.insereNoBuffer(80, 50);
-	orcs_engine.global_cycle += 1;
-	prefetcher.insereNoBuffer(90, 50);
-	orcs_engine.global_cycle += 1;
-	prefetcher.insereNoBuffer(100, 50);
-	orcs_engine.global_cycle += 1;
-	prefetcher.insereNoBuffer(110, 50);
+	prefetcher.prefetch(1025544, shift_bits, delay);
+	prefetcher.prefetch(1245217, shift_bits, delay);
+	prefetcher.prefetch(2510222, shift_bits, delay);
+	prefetcher.imprimeTabela();
 	prefetcher.imprimeBuffer();
 };
 
@@ -279,7 +254,6 @@ void cache::free_cache(){
 }
 
 
-
 /*-------------------------------------------------*/
 /*--------------------- DEBUG ---------------------*/
 /*-------------------------------------------------*/
@@ -336,7 +310,9 @@ void markov_prefetcher::initialize(unsigned char  quantidade_entradas, unsigned 
 void markov_prefetcher::allocate(uint32_t mem_endereco, unsigned int shift_bits){
 	unsigned entrada, selecionado, proximo, tag;	
 
+	// Registra tag do endereço de memória (correspondente ao bloco).
 	tag = mem_endereco >> shift_bits;
+
 	// Define Primeira entrada do prefetcher como candidata a substituição.
 	selecionado = 0;
 
@@ -367,6 +343,7 @@ void markov_prefetcher::train(uint32_t proximo_endereco, unsigned int shift_bits
 
 	unsigned  int entrada, proximo, selecionado = 0, tag;	
 
+	// Registra tag do endereço de memória (correspondente ao bloco).
 	tag = proximo_endereco >> shift_bits;
 
 	ORCS_PRINTF("treinamento: %" PRIu32 "\n", proximo_endereco);	
@@ -420,6 +397,36 @@ void markov_prefetcher::train(uint32_t proximo_endereco, unsigned int shift_bits
 			this->entradas[entrada].grupo[proximo].counter = 0;
 		}
 	}	
+}
+
+void markov_prefetcher::prefetch(uint32_t mem_endereco, unsigned int shift_bits, unsigned int delay){
+	unsigned  int entrada, proximo, selecionado = 0, tag;	
+
+	// Registra tag do endereço de memória (correspondente ao bloco).
+	tag = mem_endereco >> shift_bits;
+
+	// Registra tag do endereço de memória (correspondente ao bloco).
+	for(entrada = 0; entrada < this->quantidade_entradas; entrada++){
+		// Caso endereço seja achado em uma entrada válida. Parar de procura.
+		if(this->entradas[entrada].tag == tag){
+			break;
+		}
+	}
+
+	// Caso endereço que sofreu miss possua entrada em tabela de markov.
+	if(entrada != this->quantidade_entradas){
+
+		// Percorre todas as entradas.
+		for(proximo = 0; proximo < this->tamanho_grupo; proximo++){
+			// Seleciona a entrada dos elementos do grupo que possui maior probabilidade de seguir o endereco que sofreu miss.
+			if(this->entradas[entrada].grupo[selecionado].counter < this->entradas[entrada].grupo[proximo].counter){
+				selecionado = proximo;
+			}
+		}
+
+		//Aloca em buffer endereco que derevá ser buscado.
+		this->insereNoBuffer(this->entradas[entrada].grupo[selecionado].endereco, delay);
+	}
 }
 
 void markov_prefetcher::insereNoBuffer(uint32_t tag, unsigned int delay){
