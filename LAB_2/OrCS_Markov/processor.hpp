@@ -95,9 +95,13 @@ class markov_prefetcher{
 		// // Retornará valor da posição do elemento se encontrado, caso contrário retorna "quantidade_entradas".
 		// int search(uint64_t op_endereco);
 
-		// // Função que, de acordo com o endereco da operação atual + prefetcher.distance, 
-		// // verificará e efetuará prefetch se necessário.
-		void prefetch(uint32_t mem_endereco, cache * cache);
+		// Função que, verificará se existe entrada para endereço que sofreu miss e, 
+		// caso exista, fará prefetch de próximo provavel endereco em buffer_prefetch, 
+		// salvando o ciclo em que informação estará pronta.
+		void prefetch(uint32_t mem_endereco, unsigned int shift_bits, unsigned int delay);
+
+		// Função alocará em buffer tag, armazenando o tempo em que bloco estará pronto e atualizando o ponteiro para fim da fila.
+		void insereNoBuffer(uint32_t tag, unsigned int delay);
 		// /*-------------------------------------------------*/
 		// /*--------------------- DEBUG ---------------------*/
 		// /*-------------------------------------------------*/

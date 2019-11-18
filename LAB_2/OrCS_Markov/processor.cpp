@@ -26,18 +26,52 @@ processor_t::processor_t() {
 
 	prefetcher.initialize(16, 3, 8);
 
-	int coisa[] = {1025544,40,1025544,40,2510222,1025544,2510222, 50, 2510222, 90, 2510222}, tag, shift_bits = L2->offset_bits + L2->index_bits;
+	// int coisa[] = {1025544,40,1025544,40,2510222,1025544,2510222, 50, 2510222, 90, 2510222};
+	// int tag;
+	// int shift_bits = L2->offset_bits + L2->index_bits;
 
-	for(int i = 0; i < 10; i++){
-		orcs_engine.global_cycle += 1;
-		prefetcher.train(coisa[i], shift_bits);
-		prefetcher.allocate(coisa[i], shift_bits);
+	// for(int i = 0; i < 10; i++){
+	// 	orcs_engine.global_cycle += 1;
+	// 	prefetcher.train(coisa[i], shift_bits);
+	// 	prefetcher.allocate(coisa[i], shift_bits);
 
-		tag = coisa[i] >> shift_bits;
-		prefetcher.endereco_anterior = tag;
-	}
+	// 	tag = coisa[i] >> shift_bits;
+	// 	prefetcher.endereco_anterior = tag;
+	// }
 
-	prefetcher.imprimeTabela();
+	// for(int i = 0; i < 10; i++){
+	// 	orcs_engine.global_cycle += 1;
+	// 	prefetcher.train(coisa[i], shift_bits);
+	// 	prefetcher.allocate(coisa[i], shift_bits);
+
+	// 	tag = coisa[i] >> shift_bits;
+	// 	prefetcher.endereco_anterior = tag;
+	// }
+
+	// prefetcher.imprimeTabela();
+
+	orcs_engine.global_cycle += 1;
+	prefetcher.insereNoBuffer(20, 50);
+	orcs_engine.global_cycle += 1;
+	prefetcher.insereNoBuffer(30, 50);
+	orcs_engine.global_cycle += 1;
+	prefetcher.insereNoBuffer(20, 50);
+	orcs_engine.global_cycle += 1;
+	prefetcher.insereNoBuffer(40, 50);
+	orcs_engine.global_cycle += 1;
+	prefetcher.insereNoBuffer(50, 50);
+	orcs_engine.global_cycle += 1;
+	prefetcher.insereNoBuffer(60, 50);
+	orcs_engine.global_cycle += 1;
+	prefetcher.insereNoBuffer(70, 50);
+	orcs_engine.global_cycle += 1;
+	prefetcher.insereNoBuffer(80, 50);
+	orcs_engine.global_cycle += 1;
+	prefetcher.insereNoBuffer(90, 50);
+	orcs_engine.global_cycle += 1;
+	prefetcher.insereNoBuffer(100, 50);
+	orcs_engine.global_cycle += 1;
+	prefetcher.insereNoBuffer(110, 50);
 	prefetcher.imprimeBuffer();
 };
 
@@ -388,6 +422,32 @@ void markov_prefetcher::train(uint32_t proximo_endereco, unsigned int shift_bits
 	}	
 }
 
+void markov_prefetcher::insereNoBuffer(uint32_t tag, unsigned int delay){
+
+	uint32_t entrada;
+	// Verifica se já existe entrada que armazena bloco "tag" em buffer
+	for(entrada = 0; entrada < this->tamanho_buffer; entrada++){
+		if(this->buffer_prefetch[entrada].endereco == tag){
+			break;
+		}
+	}
+
+	// Caso nao exista nenhuma entrada armazenando o endereço anterior, solicitar e armazenar.
+	if(entrada == this->tamanho_buffer){
+		// Alocar novo bloco.
+		this->buffer_prefetch[this->cabeca_buffer].endereco = tag;
+
+		// Define quando bloco estará pronto.
+		this->buffer_prefetch[this->cabeca_buffer].ready_cycle = orcs_engine.global_cycle + delay;
+
+		// Atualiza cabeça do buffer.
+		this->cabeca_buffer +=1;
+
+		// Caso buffer tenha ultrapassado "tamanho_buffer", efetuar overflow.
+		if(this->cabeca_buffer == this->tamanho_buffer)
+			this->cabeca_buffer = 0;
+	}
+}
 
 
 
@@ -417,7 +477,7 @@ void markov_prefetcher::imprimeBuffer(){
 	uint32_t entrada;
 
 	for(entrada = 0; entrada < this->tamanho_buffer; entrada++){	
-		ORCS_PRINTF("next: %" PRIu32 " \t",this->buffer_prefetch[entrada].endereco);
-		ORCS_PRINTF("counter: %" PRIu64 "\n", 	this->buffer_prefetch[entrada].ready_cycle);
+		ORCS_PRINTF("endereco: %" PRIu32 " \t",this->buffer_prefetch[entrada].endereco);
+		ORCS_PRINTF("time: %" PRIu64 "\n", 	this->buffer_prefetch[entrada].ready_cycle);
 	}
 }
