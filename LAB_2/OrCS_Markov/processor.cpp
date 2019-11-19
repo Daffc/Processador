@@ -25,42 +25,6 @@ processor_t::processor_t() {
 	total_writeback = 0;
 
 	prefetcher.initialize(16, 3, 8);
-
-	int coisa[] = {1025544,1245217,1025544,1245217,2510222,1025544,2510222, 1245217, 2510222, 1245217, 2510222};
-	int tag;
-	int shift_bits = L2->offset_bits + L2->index_bits;
-	unsigned int recebe_delay;
-	int teste_delay = 1;
-
-	for(int i = 0; i < 10; i++){
-		orcs_engine.global_cycle += 1;
-		prefetcher.train(coisa[i], shift_bits);
-		prefetcher.allocate(coisa[i], shift_bits);
-
-		tag = coisa[i] >> shift_bits;
-		prefetcher.endereco_anterior = tag;
-	}
-
-	prefetcher.imprimeTabela();
-	prefetcher.imprimeBuffer();
-	
-	orcs_engine.global_cycle += 1;
-	ORCS_PRINTF("\nBusca %d \n",prefetcher.buscaNoBuffer(2510222,shift_bits, &recebe_delay));
-	ORCS_PRINTF("DELAY %d \n",recebe_delay);
-	orcs_engine.global_cycle += 1;
-	prefetcher.prefetch(1025544, shift_bits, teste_delay);
-	ORCS_PRINTF("\nBusca %d \n",prefetcher.buscaNoBuffer(2510222,shift_bits, &recebe_delay));
-	ORCS_PRINTF("DELAY %d \n",recebe_delay);
-	orcs_engine.global_cycle += 1;
-	prefetcher.prefetch(1245217, shift_bits, teste_delay);
-	ORCS_PRINTF("\nBusca %d \n",prefetcher.buscaNoBuffer(2510222,shift_bits, &recebe_delay));
-	ORCS_PRINTF("DELAY %d \n",recebe_delay);
-	orcs_engine.global_cycle += 1;
-	prefetcher.prefetch(2510222, shift_bits, teste_delay);
-	ORCS_PRINTF("\nBusca %d \n",prefetcher.buscaNoBuffer(2510222,shift_bits, &recebe_delay));
-	ORCS_PRINTF("DELAY %d \n",recebe_delay);
-	prefetcher.imprimeTabela();
-	prefetcher.imprimeBuffer();
 };
 
 // =====================================================================
@@ -78,7 +42,7 @@ void processor_t::clock() {
 		return;	
 	}
 	
-	// if (!orcs_engine.trace_reader->trace_fetch(&new_instruction) || orcs_engine.global_cycle > 200000) {
+	// if (!orcs_engine.trace_reader->trace_fetch(&new_instruction) || orcs_engine.global_cycle > 2000) {
 	if (!orcs_engine.trace_reader->trace_fetch(&new_instruction)) {
 		/// If EOF
 		ORCS_PRINTF("CLOCKS = %" PRIu64 "\n",orcs_engine.global_cycle);
@@ -116,38 +80,47 @@ void processor_t::statistics() {
 
 int processor_t::read(uint32_t endereco){
 	uint32_t posicao_1, posicao_2;
-	int delay;
+	unsigned int delay_interno, delay_buffer;
 
 	// L1->imprimeGrupo(endereco);
 	// L2->imprimeGrupo(endereco);
 
 	total_acesso_L1 += 1;
-	delay = L1->latencia;
+	delay_interno = L1->latencia;
 
 	// Verifica se bloco está em cache e o atualiza, caso não esteja entra no if.
 	if(!L1->search(endereco, &posicao_1)){
 		
 		miss_L1 +=1;
 		total_acesso_L2 += 1;
-		delay += L2->latencia;
+		delay_interno += L2->latencia;
 		// Verifica se bloco está em cache e o atualiza, caso não esteja entra no if.
 		if(!L2->search(endereco, &posicao_2)){			
 			
+			// Verifica se endereço consta em buffer.
+			if(prefetcher.buscaNoBuffer(endereco, L2->offset_bits + L2->index_bits, &delay_buffer)){
+				delay_interno += delay_buffer;
+			}
+			else{
+				delay_interno += DELAY_PRINC_MEM;
+				miss_L2 += 1;
+			}
 			
-			// delay += DELAY_PRINC_MEM;
-
-			miss_L2 += 1;
+			prefetcher.train(endereco, L2->offset_bits + L2->index_bits);
+			prefetcher.allocate(endereco, L2->offset_bits + L2->index_bits);
+			prefetcher.prefetch(endereco, L2->offset_bits + L2->index_bits, DELAY_PRINC_MEM);
+			prefetcher.atualizaAnterior(endereco, L2->offset_bits + L2->index_bits);
 			// Tras bloco para cache L2.
-			delay += L2->allocate(endereco, posicao_2, &total_writeback);
+			delay_interno += L2->allocate(endereco, posicao_2, &total_writeback);
 		}
 
 		// Tras bloco para cache L1.
-		delay += L1->allocate(endereco, posicao_1, &total_writeback);
+		delay_interno += L1->allocate(endereco, posicao_1, &total_writeback);
 	}
-	// ORCS_PRINTF("DELAY:\t%d\n", delay);
+	// ORCS_PRINTF("DELAY:\t%d\n", delay_interno);
 	// ORCS_PRINTF("--------------------------------------\n\n");	 
 	
-	return delay;
+	return delay_interno;
 }
 
 void processor_t::write(uint32_t endereco){
@@ -251,7 +224,6 @@ int cache::allocate(uint32_t endereco, uint32_t posicao, uint32_t *total_writeba
 	
 
 	if(this->blocos[posicao].dirty){
-		delay = DELAY_PRINC_MEM;
 		*total_writeback = *total_writeback + 1;
 	}
 
@@ -362,7 +334,7 @@ void markov_prefetcher::train(uint32_t proximo_endereco, unsigned int shift_bits
 	// Registra tag do endereço de memória (correspondente ao bloco).
 	tag = proximo_endereco >> shift_bits;
 
-	ORCS_PRINTF("treinamento: %" PRIu32 "\n", proximo_endereco);	
+	// ORCS_PRINTF("treinamento: %" PRIu32 "\n", tag);	
 
 	for(entrada = 0; entrada < this->quantidade_entradas; entrada++){
 		// Caso endereço seja achado em uma entrada válida. Parar de procura.uint32_t 	endereco;
@@ -370,8 +342,9 @@ void markov_prefetcher::train(uint32_t proximo_endereco, unsigned int shift_bits
 			break;
 		}
 	}
+	// this->imprimeTabela();
 	
-	ORCS_PRINTF("entrada: %d\t", entrada);	
+	// ORCS_PRINTF("entrada: %d\t", entrada);	
 
 	for(proximo = 0; proximo < this->tamanho_grupo; proximo++){
 		// Caso proximo_endereco conste em algum elemento do grupo.
@@ -384,7 +357,7 @@ void markov_prefetcher::train(uint32_t proximo_endereco, unsigned int shift_bits
 		}
 	}
 
-	ORCS_PRINTF("selecionado: %d\n\n", selecionado);	
+	// ORCS_PRINTF("selecionado: %d\n\n", selecionado);	
 
 	// Caso não conste, substituir elemento do grupo "menos provavel"
 	if(proximo == this->tamanho_grupo){
@@ -483,6 +456,11 @@ int markov_prefetcher::buscaNoBuffer(uint32_t mem_endereco,unsigned int shift_bi
 
 	*delay = 0;
 	
+	// ORCS_PRINTF("mem_endereco: %" PRIu32 " \n",mem_endereco);
+	// ORCS_PRINTF("tag: %" PRIu32 " \n", tag);
+
+	// this->imprimeBuffer();
+
 	// Verifica se já existe entrada que armazena bloco "tag" em buffer
 	for(entrada = 0; entrada < this->tamanho_buffer; entrada++){
 		if(this->buffer_prefetch[entrada].endereco == tag){
@@ -500,13 +478,28 @@ int markov_prefetcher::buscaNoBuffer(uint32_t mem_endereco,unsigned int shift_bi
 		if(diferenca > 0)
 			*delay = diferenca;
 
+		// ORCS_PRINTF("ENCONTRADO: %" PRIu32 " \n",mem_endereco);
+		// ORCS_PRINTF("CICLO: %lu \n",orcs_engine.global_cycle);
+		// ORCS_PRINTF("DELAY: %" PRIu32 " \n",*delay);
+		// ORCS_PRINTF("&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&\n\n");
 		// Retorna que bloco foi encontrado.
 		return 1;
 	}
 	else{
-		// Retorna que bloco não foi encontrado.
+		// // Retorna que bloco não foi encontrado.
+		// ORCS_PRINTF("MISS: %" PRIu32 " \n",mem_endereco);
+		// ORCS_PRINTF("&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&\n\n");
 		return 0;
 	}
+}
+
+void markov_prefetcher::atualizaAnterior(uint32_t mem_endereco, unsigned int shift_bits){
+
+	unsigned  int  tag;	
+
+	// Registra tag do endereço de memória (correspondente ao bloco).
+	tag = mem_endereco >> shift_bits;
+	this->endereco_anterior = tag;
 }
 
 

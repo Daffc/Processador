@@ -103,7 +103,9 @@ class markov_prefetcher{
 		// Função alocará em buffer tag, armazenando o tempo em que bloco estará pronto e atualizando o ponteiro para fim da fila.
 		void insereNoBuffer(uint32_t tag, unsigned int delay);
 
-
+		// Atualiza endereço de memória que sofreu miss em cache.
+		void atualizaAnterior(uint32_t mem_endereco, unsigned int shift_bits);
+		
 		int buscaNoBuffer(uint32_t mem_endereco,unsigned int shift_bits, unsigned int *delay);
 		// /*-------------------------------------------------*/
 		// /*--------------------- DEBUG ---------------------*/
