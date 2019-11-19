@@ -3,7 +3,7 @@
 // =====================================================================
 
 markov_prefetcher prefetcher;
-
+unsigned long int delay_extra = 0, contador_out_of_time = 0;
 processor_t::processor_t() {
 
 	//definindo delay inicial.
@@ -68,14 +68,16 @@ void processor_t::clock() {
 // =====================================================================
 void processor_t::statistics() {
 
-	ORCS_PRINTF("total_acesso_L1:\t%" PRIu32 "\n", total_acesso_L1);
-	ORCS_PRINTF("miss_L1:        \t%" PRIu32 "\n", miss_L1);
-	ORCS_PRINTF("total_acesso_L2:\t%" PRIu32 "\n", total_acesso_L2);
-	ORCS_PRINTF("miss_L2:        \t%" PRIu32 "\n", miss_L2);
-	ORCS_PRINTF("total_writeback:\t%" PRIu32 "\n", total_writeback);
+	ORCS_PRINTF("total_acesso_L1:     \t%" PRIu32 "\n", total_acesso_L1);
+	ORCS_PRINTF("miss_L1:             \t%" PRIu32 "\n", miss_L1);
+	ORCS_PRINTF("miss_rate_L1:        \t%f\n", (miss_L1 * 1.0) / (total_acesso_L1 * 1.0));
+	ORCS_PRINTF("total_acesso_L2:     \t%" PRIu32 "\n", total_acesso_L2);
+	ORCS_PRINTF("miss_L2:             \t%" PRIu32 "\n", miss_L2);
+	ORCS_PRINTF("miss_rate_L2:        \t%f\n", (miss_L2 * 1.0) / (total_acesso_L2 * 1.0));
+	ORCS_PRINTF("delay_extra:         \t%lu\n", delay_extra);
+	ORCS_PRINTF("contador_out_of_time:\t%lu\n", contador_out_of_time);
 	ORCS_PRINTF("######################################################\n");
 	ORCS_PRINTF("processor_t\n");
-
 };
 
 int processor_t::read(uint32_t endereco){
@@ -479,8 +481,11 @@ int markov_prefetcher::buscaNoBuffer(uint32_t mem_endereco,unsigned int shift_bi
 		diferenca = this->buffer_prefetch[entrada].ready_cycle - orcs_engine.global_cycle;
 
 		// Caso diferença seja positiva, retornar como delay (mais rápido que pedir a cache inferior).
-		if(diferenca > 0)
+		if(diferenca > 0){
 			*delay = diferenca;
+			delay_extra += diferenca;
+			contador_out_of_time += 1;
+		}
 
 		// ORCS_PRINTF("ENCONTRADO: %" PRIu32 " \n",mem_endereco);
 		// ORCS_PRINTF("CICLO: %lu \n",orcs_engine.global_cycle);
