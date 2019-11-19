@@ -58,6 +58,7 @@ class entrada_buffer{
 	public:
 		uint32_t 	endereco;
 		uint64_t 	ready_cycle;
+		char		validade;
 };
 class proximo{
 	public:
@@ -106,7 +107,11 @@ class markov_prefetcher{
 		// Atualiza endereço de memória que sofreu miss em cache.
 		void atualizaAnterior(uint32_t mem_endereco, unsigned int shift_bits);
 		
+		// Busca por bloco em buffer, caso exista retorna 1 e valor de elay para sua recuperação em *delay, caso contrário retornará 0.
 		int buscaNoBuffer(uint32_t mem_endereco,unsigned int shift_bits, unsigned int *delay);
+
+		// No caso de escritas, invalidará blocos em buffer caso estes existam.
+		void invalidaBlocoBuffer(uint32_t mem_endereco, unsigned int shift_bits);
 		// /*-------------------------------------------------*/
 		// /*--------------------- DEBUG ---------------------*/
 		// /*-------------------------------------------------*/

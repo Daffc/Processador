@@ -156,6 +156,7 @@ void processor_t::write(uint32_t endereco){
 			break;
 		}
 	}
+	prefetcher.invalidaBlocoBuffer(endereco, L2->offset_bits + L2->index_bits);
 }
 
 /***********************************************/
@@ -423,7 +424,7 @@ void markov_prefetcher::insereNoBuffer(uint32_t tag, unsigned int delay){
 	uint32_t entrada;
 	// Verifica se já existe entrada que armazena bloco "tag" em buffer
 	for(entrada = 0; entrada < this->tamanho_buffer; entrada++){
-		if(this->buffer_prefetch[entrada].endereco == tag){
+		if(this->buffer_prefetch[entrada].endereco == tag && this->buffer_prefetch[entrada].validade){
 			break;
 		}
 	}
@@ -435,6 +436,9 @@ void markov_prefetcher::insereNoBuffer(uint32_t tag, unsigned int delay){
 
 		// Define quando bloco estará pronto.
 		this->buffer_prefetch[this->cabeca_buffer].ready_cycle = orcs_engine.global_cycle + delay;
+
+		// Define bloco como válido.
+		this->buffer_prefetch[this->cabeca_buffer].validade = 1;
 
 		// Atualiza cabeça do buffer.
 		this->cabeca_buffer +=1;
@@ -463,7 +467,7 @@ int markov_prefetcher::buscaNoBuffer(uint32_t mem_endereco,unsigned int shift_bi
 
 	// Verifica se já existe entrada que armazena bloco "tag" em buffer
 	for(entrada = 0; entrada < this->tamanho_buffer; entrada++){
-		if(this->buffer_prefetch[entrada].endereco == tag){
+		if(this->buffer_prefetch[entrada].endereco == tag && this->buffer_prefetch[entrada].validade ){
 			break;
 		}
 	}
@@ -490,6 +494,29 @@ int markov_prefetcher::buscaNoBuffer(uint32_t mem_endereco,unsigned int shift_bi
 		// ORCS_PRINTF("MISS: %" PRIu32 " \n",mem_endereco);
 		// ORCS_PRINTF("&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&\n\n");
 		return 0;
+	}
+}
+
+void markov_prefetcher::invalidaBlocoBuffer(uint32_t mem_endereco, unsigned int shift_bits){
+
+	
+	unsigned  int entrada, tag;	
+
+	// Registra tag do endereço de memória (correspondente ao bloco).
+	tag = mem_endereco >> shift_bits;
+
+	// Verifica se já existe entrada que armazena bloco "tag" em buffer
+	for(entrada = 0; entrada < this->tamanho_buffer; entrada++){
+		if(this->buffer_prefetch[entrada].endereco == tag){
+			break;
+		}
+	}
+
+	// Caso exista entrada armazenando o endereço anterior.
+	if(entrada != this->tamanho_buffer){
+		
+		// Invalida bloco uma vez que ele se encontra la L2.
+		this->buffer_prefetch[entrada].validade = 0;
 	}
 }
 
@@ -529,6 +556,7 @@ void markov_prefetcher::imprimeBuffer(){
 
 	for(entrada = 0; entrada < this->tamanho_buffer; entrada++){	
 		ORCS_PRINTF("endereco: %" PRIu32 " \t",this->buffer_prefetch[entrada].endereco);
+		ORCS_PRINTF("validade: %d \t",this->buffer_prefetch[entrada].validade);
 		ORCS_PRINTF("time: %" PRIu64 "\n", 	this->buffer_prefetch[entrada].ready_cycle);
 	}
 }
