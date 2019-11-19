@@ -24,7 +24,7 @@ processor_t::processor_t() {
 	total_acesso_L2 = 0;
 	total_writeback = 0;
 
-	prefetcher.initialize(16, 3, 8);
+	prefetcher.initialize(8, 4, 32);
 };
 
 // =====================================================================
