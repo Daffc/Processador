@@ -12,6 +12,6 @@ miss_L2:             	580471
 miss_rate_L2:        	0.499072
 delay_extra:         	416
 contador_out_of_time:	3
-realocations:        	0
+contador_prefetches: 	855491
 ######################################################
 processor_t

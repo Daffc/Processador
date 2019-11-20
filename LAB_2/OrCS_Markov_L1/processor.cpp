@@ -3,7 +3,7 @@
 // =====================================================================
 
 markov_prefetcher prefetcher;
-unsigned long int delay_extra = 0, contador_out_of_time = 0;
+unsigned long int delay_extra = 0, contador_out_of_time = 0, contador_prefetches = 0;
 processor_t::processor_t() {
 
 	//definindo delay inicial.
@@ -76,6 +76,7 @@ void processor_t::statistics() {
 	ORCS_PRINTF("miss_rate_L2:        \t%f\n", (miss_L2 * 1.0) / (total_acesso_L2 * 1.0));
 	ORCS_PRINTF("delay_extra:         \t%lu\n", delay_extra);
 	ORCS_PRINTF("contador_out_of_time:\t%lu\n", contador_out_of_time);
+	ORCS_PRINTF("contador_prefetches:\t%lu\n", contador_prefetches);
 	ORCS_PRINTF("######################################################\n");
 	ORCS_PRINTF("processor_t\n");
 };
@@ -99,6 +100,7 @@ int processor_t::read(uint32_t endereco){
 		
 		//Treina Prefetcer com o que chega a L2.
 		prefetcher.train(endereco, L2->offset_bits + L2->index_bits);
+		prefetcher.atualizaAnterior(endereco, L2->offset_bits + L2->index_bits);
 
 		// Verifica se bloco está em cache e o atualiza, caso não esteja entra no if.
 		if(!L2->search(endereco, &posicao_2)){			
@@ -113,7 +115,6 @@ int processor_t::read(uint32_t endereco){
 			}
 			prefetcher.allocate(endereco, L2->offset_bits + L2->index_bits);
 			prefetcher.prefetch(endereco, L2->offset_bits + L2->index_bits, DELAY_PRINC_MEM);
-			prefetcher.atualizaAnterior(endereco, L2->offset_bits + L2->index_bits);
 			// Tras bloco para cache L2.
 			delay_interno += L2->allocate(endereco, posicao_2, &total_writeback);
 		}
@@ -350,47 +351,50 @@ void markov_prefetcher::train(uint32_t proximo_endereco, unsigned int shift_bits
 	// this->imprimeTabela();
 	
 	// ORCS_PRINTF("entrada: %d\t", entrada);	
-
-	for(proximo = 0; proximo < this->tamanho_grupo; proximo++){
-		// Caso proximo_endereco conste em algum elemento do grupo.
-		if(this->entradas[entrada].grupo[proximo].endereco == tag){	
-			break;
+	if(entrada < this->quantidade_entradas){
+			for(proximo = 0; proximo < this->tamanho_grupo; proximo++){
+			// Caso proximo_endereco conste em algum elemento do grupo.
+			// ORCS_PRINTF("proximo: %d\t", proximo);	
+			if(this->entradas[entrada].grupo[proximo].endereco == tag){	
+				break;
+			}
+			// Seleciona a entrada do grupo que possui menor probabilidade de sofrer prefetch.
+			if(this->entradas[entrada].grupo[selecionado].counter > this->entradas[entrada].grupo[proximo].counter){
+				selecionado = proximo;
+			}
 		}
-		// Seleciona a entrada do grupo que possui menor probabilidade de sofrer prefetch.
-		if(this->entradas[entrada].grupo[selecionado].counter > this->entradas[entrada].grupo[proximo].counter){
+
+		// ORCS_PRINTF("selecionado: %d\n\n", selecionado);	
+
+		// Caso não conste, substituir elemento do grupo "menos provavel"
+		if(proximo == this->tamanho_grupo){
+			this->entradas[entrada].grupo[selecionado].endereco = tag;
+			this->entradas[entrada].grupo[selecionado].counter = 0;
+		}
+		else{
+			// Ajusta selecionado para caso entrada de "ultimo_endereco" tenha sido encontrada.
 			selecionado = proximo;
 		}
+
+		for(proximo = 0; proximo < this->tamanho_grupo; proximo++){
+			// Se entrada possui o proximo, incrementar em 1.
+			if(proximo == selecionado){
+				this->entradas[entrada].grupo[proximo].counter += 1;
+			}
+			// Caso contreário decrementar.
+			else{
+				this->entradas[entrada].grupo[proximo].counter -= 1;
+			}
+
+			if(this->entradas[entrada].grupo[proximo].counter > 3){
+				this->entradas[entrada].grupo[proximo].counter = 3;
+			}
+			if(this->entradas[entrada].grupo[proximo].counter < 0){
+				this->entradas[entrada].grupo[proximo].counter = 0;
+			}
+		}	
 	}
-
-	// ORCS_PRINTF("selecionado: %d\n\n", selecionado);	
-
-	// Caso não conste, substituir elemento do grupo "menos provavel"
-	if(proximo == this->tamanho_grupo){
-		this->entradas[entrada].grupo[selecionado].endereco = tag;
-		this->entradas[entrada].grupo[selecionado].counter = 0;
-	}
-	else{
-		// Ajusta selecionado para caso entrada de "ultimo_endereco" tenha sido encontrada.
-		selecionado = proximo;
-	}
-
-	for(proximo = 0; proximo < this->tamanho_grupo; proximo++){
-		// Se entrada possui o proximo, incrementar em 1.
-		if(proximo == selecionado){
-			this->entradas[entrada].grupo[proximo].counter += 1;
-		}
-		// Caso contreário decrementar.
-		else{
-			this->entradas[entrada].grupo[proximo].counter -= 1;
-		}
-
-		if(this->entradas[entrada].grupo[proximo].counter > 3){
-			this->entradas[entrada].grupo[proximo].counter = 3;
-		}
-		if(this->entradas[entrada].grupo[proximo].counter < 0){
-			this->entradas[entrada].grupo[proximo].counter = 0;
-		}
-	}	
+	
 }
 
 void markov_prefetcher::prefetch(uint32_t mem_endereco, unsigned int shift_bits, unsigned int delay){
@@ -446,6 +450,9 @@ void markov_prefetcher::insereNoBuffer(uint32_t tag, unsigned int delay){
 
 		// Atualiza cabeça do buffer.
 		this->cabeca_buffer +=1;
+
+		// Conta quantidade de vezes que efetuou prefetch.
+		contador_prefetches += 1;
 
 		// Caso buffer tenha ultrapassado "tamanho_buffer", efetuar overflow.
 		if(this->cabeca_buffer == this->tamanho_buffer)

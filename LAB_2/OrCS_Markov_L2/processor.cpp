@@ -3,7 +3,7 @@
 // =====================================================================
 
 markov_prefetcher prefetcher;
-unsigned long int delay_extra = 0, contador_out_of_time = 0;
+unsigned long int delay_extra = 0, contador_out_of_time = 0, contador_prefetches = 0;
 processor_t::processor_t() {
 
 	//definindo delay inicial.
@@ -76,6 +76,7 @@ void processor_t::statistics() {
 	ORCS_PRINTF("miss_rate_L2:        \t%f\n", (miss_L2 * 1.0) / (total_acesso_L2 * 1.0));
 	ORCS_PRINTF("delay_extra:         \t%lu\n", delay_extra);
 	ORCS_PRINTF("contador_out_of_time:\t%lu\n", contador_out_of_time);
+	ORCS_PRINTF("contador_prefetches:\t%lu\n", contador_prefetches);
 	ORCS_PRINTF("######################################################\n");
 	ORCS_PRINTF("processor_t\n");
 };
@@ -444,6 +445,9 @@ void markov_prefetcher::insereNoBuffer(uint32_t tag, unsigned int delay){
 
 		// Atualiza cabeça do buffer.
 		this->cabeca_buffer +=1;
+
+		// Conta quantidade de vezes que efetuou prefetch.
+		contador_prefetches += 1;
 
 		// Caso buffer tenha ultrapassado "tamanho_buffer", efetuar overflow.
 		if(this->cabeca_buffer == this->tamanho_buffer)
