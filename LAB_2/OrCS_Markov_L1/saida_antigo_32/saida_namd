@@ -1,13 +1,13 @@
 End of dynamic simulation trace
-CLOCKS = 288301958
+CLOCKS = 273304325
 End of Simulation
 ######################################################
 trace_reader_t
-fetch_instructions:	200001503
-total_acesso_L1:	87569983
-miss_L1:        	99308
-total_acesso_L2:	99308
-miss_L2:        	1619
-total_writeback:	28741
+fetch_instructions:	200001502
+total_acesso_L1:	70031538
+miss_L1:        	698174
+total_acesso_L2:	698174
+miss_L2:        	2353
+total_writeback:	611984
 ######################################################
 processor_t

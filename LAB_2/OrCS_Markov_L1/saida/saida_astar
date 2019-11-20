@@ -1,0 +1,16 @@
+End of dynamic simulation trace
+CLOCKS = 384256277
+End of Simulation
+######################################################
+trace_reader_t
+fetch_instructions:	200001517
+total_acesso_L1:     	75112242
+miss_L1:             	1933145
+miss_rate_L1:        	0.025737
+total_acesso_L2:     	1933145
+miss_L2:             	500828
+miss_rate_L2:        	0.259074
+delay_extra:         	1244338
+contador_out_of_time:	10359
+######################################################
+processor_t
